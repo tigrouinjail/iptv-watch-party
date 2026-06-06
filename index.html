@@ -5,72 +5,141 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regardons Ensemble • V12 OTT</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: white; }
-        .cinema { background: linear-gradient(135deg, #0f172a, #1e1135); }
+        body { background: #0f172a; color: white; }
+        .channel-item { transition: all 0.2s; }
+        .channel-item:hover { background: rgba(255,255,255,0.1); }
+        .channel-item.active { background: #e11d48; }
     </style>
 </head>
-<body class="cinema min-h-screen">
-    <div class="max-w-2xl mx-auto p-8">
-        <!-- Header -->
-        <div class="text-center mb-10">
-            <div class="w-16 h-16 bg-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-tv text-white text-4xl"></i>
-            </div>
-            <h1 class="text-4xl font-bold">Regardons Ensemble</h1>
-            <p class="text-white/60 mt-2">V12 OTT - Configuration rapide</p>
+<body>
+    <div class="max-w-6xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Regardons Ensemble</h1>
+            <button onclick="toggleAdmin()" class="px-4 py-2 bg-white/10 rounded-2xl text-sm flex items-center gap-x-2">
+                <i class="fa-solid fa-user-shield"></i>
+                <span>Mode Admin</span>
+            </button>
         </div>
 
-        <!-- Main Card -->
-        <div class="bg-white/5 border border-white/10 rounded-3xl p-8">
-            <h2 class="text-2xl font-semibold mb-6 flex items-center gap-x-3">
-                <i class="fa-solid fa-play-circle text-rose-400"></i>
-                <span>IPTVnator (Recommandé)</span>
-            </h2>
-
-            <div class="mb-8">
-                <p class="text-white/70 mb-4">IPTVnator est actuellement la meilleure solution web pour ton compte Xtream. Elle supporte parfaitement les identifiants et l’EPG.</p>
-                
-                <a href="https://iptvnator.vercel.app/" target="_blank"
-                   class="flex items-center justify-center w-full bg-rose-600 hover:bg-rose-500 py-4 rounded-2xl font-semibold text-lg gap-x-3 transition-colors">
-                    <i class="fa-solid fa-external-link-alt"></i>
-                    <span>Ouvrir IPTVnator Web</span>
-                </a>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- VIDEO -->
+            <div class="lg:col-span-8">
+                <div class="bg-black rounded-3xl overflow-hidden aspect-video">
+                    <video id="video" class="w-full h-full" controls></video>
+                </div>
+                <div id="title" class="text-center mt-4 text-2xl font-semibold"></div>
             </div>
 
-            <!-- Configuration -->
-            <div>
-                <h3 class="font-semibold mb-4 text-lg">Configuration à entrer dans IPTVnator :</h3>
-                
-                <div class="bg-black/40 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-white/60">Type de connexion</span>
-                        <span class="font-mono bg-white/10 px-3 py-1 rounded-xl text-sm">Xtream Codes</span>
+            <!-- CHANNEL LIST -->
+            <div class="lg:col-span-4">
+                <div id="adminPanel" class="hidden glass p-5 rounded-3xl">
+                    <h3 class="font-bold mb-3">Panel Admin</h3>
+                    
+                    <div class="mb-3">
+                        <input id="m3uUrl" value="http://2970702.fluxitv.top/get.php?username=K97Z86M9&password=URGNZY&type=m3u&output=mpegts" class="w-full p-2 rounded bg-black/40 text-sm mb-2">
+                        <button onclick="loadPlaylist()" class="w-full bg-rose-600 py-2 rounded text-sm font-semibold">Charger ma playlist</button>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-white/60">Name</span>
-                        <span class="font-mono">V12 OTT</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-white/60">Host / URL</span>
-                        <span class="font-mono text-rose-400">http://2970702.fluxitv.top</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-white/60">Username</span>
-                        <span class="font-mono">K97Z86M9</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-white/60">Password</span>
-                        <span class="font-mono">URGNZY</span>
-                    </div>
+
+                    <div id="channelList" class="max-h-[450px] overflow-y-auto space-y-1 text-sm"></div>
                 </div>
             </div>
         </div>
-
-        <div class="mt-8 text-center text-xs text-white/40">
-            Une fois connecté, tu auras accès à toutes tes chaînes + le guide TV.
-        </div>
     </div>
+
+    <script>
+        let channels = [];
+        let currentChannel = null;
+        let video = document.getElementById('video');
+
+        function toggleAdmin() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        async function loadPlaylist() {
+            const url = document.getElementById('m3uUrl').value;
+            try {
+                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+                const text = await res.text();
+                channels = parseM3U(text);
+                renderChannels();
+            } catch (e) {
+                alert('Erreur de chargement. Colle le contenu du fichier .m3u directement.');
+            }
+        }
+
+        function parseM3U(content) {
+            const lines = content.split('\n');
+            const result = [];
+            let name = '';
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const m = line.match(/,(.+)$/);
+                    name = m ? m[1] : 'Chaîne';
+                } else if (line && !line.startsWith('#')) {
+                    result.push({ name, url: line });
+                }
+            }
+            return result;
+        }
+
+        function renderChannels() {
+            const container = document.getElementById('channelList');
+            container.innerHTML = '';
+            channels.forEach(ch => {
+                const div = document.createElement('div');
+                div.className = 'channel-item p-2 rounded cursor-pointer';
+                div.innerHTML = ch.name;
+                div.onclick = () => playChannel(ch);
+                container.appendChild(div);
+            });
+        }
+
+        function playChannel(ch) {
+            currentChannel = ch;
+            loadVideo(ch.url, ch.name);
+            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+        }
+
+        function loadVideo(url, title) {
+            if (!url) return;
+            const isHLS = url.includes('.m3u8');
+            if (isHLS && Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+            } else {
+                video.src = url;
+            }
+            document.getElementById('title').innerText = title;
+        }
+
+        function copyLink() {
+            if (!currentChannel) return alert('Aucune chaîne sélectionnée');
+            const link = location.origin + location.pathname + '?stream=' + encodeURIComponent(currentChannel.url) + '&title=' + encodeURIComponent(currentChannel.name);
+            navigator.clipboard.writeText(link);
+            alert('Lien copié ! Envoie-le à tes spectateurs.');
+        }
+
+        // Load from URL if shared
+        function initFromURL() {
+            const params = new URLSearchParams(location.search);
+            const stream = params.get('stream');
+            const title = params.get('title');
+            if (stream) {
+                loadVideo(stream, title);
+                document.getElementById('title').innerText = title || '';
+            }
+        }
+
+        window.onload = () => {
+            initFromURL();
+        };
+    </script>
 </body>
 </html>
