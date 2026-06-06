@@ -105,7 +105,7 @@
                             <button onclick="copyRoomLink()" 
                                     class="text-xs px-3 py-1 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center gap-x-1.5 transition-colors border border-white/10">
                                 <i class="fa-solid fa-link text-xs"></i>
-                                <span class="hidden md:inline text-xs">Copier lien invités</span>
+                                <span class="hidden md:inline text-xs">Copier lien spectateurs</span>
                             </button>
                         </div>
                     </div>
@@ -151,14 +151,15 @@
                              class="text-2xl font-semibold tracking-tight flex items-center gap-x-3">
                             <!-- Titre mis à jour dynamiquement -->
                         </div>
-                        <div id="streamUrlDisplay" class="text-xs text-white/40 font-mono truncate max-w-[420px]"></div>
+                        <!-- URL du flux : UNIQUEMENT visible par l'Admin -->
+                        <div id="streamUrlDisplay" class="hidden text-xs text-white/40 font-mono truncate max-w-[420px]"></div>
                     </div>
                     
-                    <!-- Host only controls -->
+                    <!-- Admin badge -->
                     <div id="hostControlsHeader" class="hidden items-center gap-x-2">
                         <div class="px-3 py-1 bg-rose-500/10 text-rose-400 text-xs font-semibold rounded-3xl flex items-center gap-x-1.5 border border-rose-500/20">
                             <i class="fa-solid fa-crown"></i>
-                            <span>VOUS ÊTES L'HÔTE</span>
+                            <span>VOUS ÊTES L’ADMIN</span>
                         </div>
                     </div>
                 </div>
@@ -173,7 +174,7 @@
                         <div class="text-center px-8">
                             <i class="fa-solid fa-play-circle text-6xl text-white/30 mb-4"></i>
                             <h3 class="text-xl font-semibold mb-2">Aucun flux en cours</h3>
-                            <p id="noStreamText" class="text-white/60 max-w-xs mx-auto">L'hôte n'a pas encore sélectionné de contenu IPTV.</p>
+                            <p id="noStreamText" class="text-white/60 max-w-xs mx-auto">L’Admin n’a pas encore sélectionné de contenu IPTV.</p>
                         </div>
                     </div>
 
@@ -185,7 +186,7 @@
                         </div>
                     </div>
 
-                    <!-- Custom Controls (Host only) -->
+                    <!-- Custom Controls (Admin only) -->
                     <div id="customControls" class="hidden absolute bottom-0 left-0 right-0 p-4 z-30 custom-controls">
                         <div class="flex items-center gap-x-4">
                             
@@ -220,11 +221,11 @@
                     </div>
                 </div>
 
-                <!-- Host Stream Controls -->
+                <!-- Admin Stream Controls -->
                 <div id="hostStreamPanel" class="hidden mt-4 glass rounded-3xl p-5">
                     <div class="flex items-center gap-x-2 mb-3">
                         <i class="fa-solid fa-broadcast-tower text-rose-400"></i>
-                        <span class="font-semibold text-sm tracking-wider">CONTRÔLE DU FLUX IPTV</span>
+                        <span class="font-semibold text-sm tracking-wider">CONTRÔLE ADMIN DU FLUX IPTV</span>
                     </div>
                     
                     <div class="flex flex-col md:flex-row gap-3">
@@ -234,7 +235,7 @@
                                    class="stream-input w-full bg-black/40 border border-white/20 focus:border-rose-500 px-4 py-3 rounded-2xl text-sm outline-none">
                         </div>
                         <div class="flex-1">
-                            <label class="text-xs text-white/60 block mb-1">Titre affiché (optionnel)</label>
+                            <label class="text-xs text-white/60 block mb-1">Titre du programme</label>
                             <input id="contentTitleInput" type="text" placeholder="Match du soir / Film du moment" 
                                    class="w-full bg-black/40 border border-white/20 focus:border-rose-500 px-4 py-3 rounded-2xl text-sm outline-none">
                         </div>
@@ -242,14 +243,14 @@
                             <button onclick="changeStream()"
                                     class="h-[50px] px-8 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 transition-all rounded-2xl font-semibold flex items-center justify-center gap-x-2 whitespace-nowrap">
                                 <i class="fa-solid fa-play mr-1"></i>
-                                <span>DIFFUSER</span>
+                                <span>DIFFUSER CE PROGRAMME</span>
                             </button>
                         </div>
                     </div>
                     
                     <p class="text-[10px] text-white/40 mt-3 flex items-center gap-x-1">
                         <i class="fa-solid fa-info-circle"></i> 
-                        <span>Le flux doit être accessible publiquement depuis un navigateur (HLS de préférence). Évitez les liens protégés par token ou géo-blocage.</span>
+                        <span>Le flux doit être accessible publiquement depuis un navigateur (HLS de préférence).</span>
                     </p>
                 </div>
             </div>
@@ -262,7 +263,7 @@
                     <div class="flex items-center justify-between mb-4 px-1">
                         <div class="section-title flex items-center gap-x-2">
                             <i class="fa-solid fa-users"></i> 
-                            <span>PARTICIPANTS</span>
+                            <span>PARTICIPANTS EN DIRECT</span>
                             <span id="participantCount" class="font-mono text-xs bg-white/10 px-2 rounded">0</span>
                         </div>
                     </div>
@@ -315,7 +316,7 @@
         let videoElement = null;
         let lastSyncTime = 0;
         let mySocketId = null;
-        let myName = 'Invité';
+        let myName = 'Spectateur';
 
         // ==================== UTILS ====================
         function formatTime(seconds) {
@@ -347,7 +348,6 @@
             navigator.clipboard.writeText(text).then(() => {
                 showToast(successMsg);
             }).catch(() => {
-                // Fallback
                 const input = document.createElement('input');
                 input.value = text;
                 document.body.appendChild(input);
@@ -361,7 +361,7 @@
         function copyRoomLink() {
             if (!currentRoomId) return;
             const url = `${window.location.origin}/room.html?roomId=${currentRoomId}`;
-            copyToClipboard(url, 'Lien invités copié ! Partagez-le à vos amis.');
+            copyToClipboard(url, 'Lien spectateurs copié ! Partagez-le à vos amis.');
         }
 
         function leaveRoom() {
@@ -374,7 +374,6 @@
         function initVideoPlayer() {
             videoElement = document.getElementById('videoPlayer');
             
-            // Événements pour l'hôte
             if (isHost) {
                 videoElement.addEventListener('play', () => {
                     if (currentRoomId) {
@@ -406,7 +405,6 @@
                     }
                 });
 
-                // Mise à jour périodique du temps (pour les viewers)
                 setInterval(() => {
                     if (isHost && currentRoomId && !videoElement.paused && videoElement.currentTime > 0) {
                         socket.emit('video-control', {
@@ -415,10 +413,9 @@
                             currentTime: videoElement.currentTime
                         });
                     }
-                }, 8000); // sync toutes les 8 secondes
+                }, 8000);
             }
 
-            // Mise à jour de l'UI temps
             videoElement.addEventListener('timeupdate', () => {
                 if (!isHost) return;
                 
@@ -444,7 +441,6 @@
             loadingOverlay.classList.remove('hidden');
             noStreamOverlay.classList.add('hidden');
 
-            // Nettoyer l'ancien flux
             if (hlsInstance) {
                 hlsInstance.destroy();
                 hlsInstance = null;
@@ -454,14 +450,17 @@
 
             currentStreamUrl = url;
 
-            // Afficher l'URL
             const urlDisplay = document.getElementById('streamUrlDisplay');
             if (urlDisplay) {
-                urlDisplay.textContent = url.length > 65 ? url.substring(0, 62) + '...' : url;
-                urlDisplay.title = url;
+                if (isHost) {
+                    urlDisplay.style.display = 'block';
+                    urlDisplay.textContent = url.length > 65 ? url.substring(0, 62) + '...' : url;
+                    urlDisplay.title = url;
+                } else {
+                    urlDisplay.style.display = 'none';
+                }
             }
 
-            // Détection HLS
             const isHLS = url.includes('.m3u8') || url.includes('m3u8');
 
             if (isHLS && Hls.isSupported()) {
@@ -476,7 +475,7 @@
                 
                 hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
                     loadingOverlay.classList.add('hidden');
-                    showToast('Flux HLS chargé avec succès', 'success');
+                    showToast('Flux chargé avec succès', 'success');
                     
                     if (isHost) {
                         document.getElementById('customControls').classList.remove('hidden');
@@ -487,10 +486,9 @@
                 hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                     console.error('HLS Error:', data);
                     loadingOverlay.classList.add('hidden');
-                    showToast('Erreur de chargement du flux HLS. Vérifiez l\'URL.', 'error');
+                    showToast('Erreur de chargement du flux. Vérifiez l\'URL dans VLC.', 'error');
                 });
             } else {
-                // Essai natif (mp4, webm ou certains flux)
                 videoElement.src = url;
                 
                 videoElement.onloadedmetadata = () => {
@@ -505,7 +503,7 @@
 
                 videoElement.onerror = () => {
                     loadingOverlay.classList.add('hidden');
-                    showToast('Impossible de lire ce flux. Essayez un lien .m3u8 ou testez-le dans VLC.', 'error');
+                    showToast('Impossible de lire ce flux. Testez-le dans VLC.', 'error');
                     document.getElementById('noStreamOverlay').classList.remove('hidden');
                     document.getElementById('noStreamText').textContent = 'Le flux n\'a pas pu être lu par le navigateur.';
                 };
@@ -531,7 +529,6 @@
             
             videoElement.currentTime = newTime;
             
-            // Envoyer immédiatement
             socket.emit('video-control', {
                 roomId: currentRoomId,
                 action: 'seek',
@@ -548,13 +545,12 @@
                 currentTime: videoElement.currentTime
             });
             
-            showToast('Synchronisation forcée envoyée à tout le monde');
+            showToast('Synchronisation envoyée à tout le monde');
         }
 
-        // ==================== HOST ACTIONS ====================
         function changeStream() {
             if (!isHost || !currentRoomId) {
-                showToast('Seul l\'hôte peut changer le flux', 'error');
+                showToast('Seul l’Admin peut changer le flux', 'error');
                 return;
             }
 
@@ -569,11 +565,10 @@
             socket.emit('change-stream', {
                 roomId: currentRoomId,
                 streamUrl: urlInput,
-                contentTitle: titleInput || 'Contenu IPTV'
+                contentTitle: titleInput || 'Programme IPTV'
             });
         }
 
-        // ==================== SOCKET EVENTS ====================
         function setupSocketListeners() {
             socket.on('connect', () => {
                 mySocketId = socket.id;
@@ -595,34 +590,33 @@
             socket.on('room-created', (data) => {
                 currentRoomId = data.roomId;
                 isHost = data.isHost;
-                myName = data.participants.find(p => p.id === mySocketId)?.name || 'Hôte';
+                myName = data.participants.find(p => p.id === mySocketId)?.name || 'Admin';
                 
                 initRoomUI(data);
-                showToast('Salle créée avec succès ! Partagez le lien aux invités.');
+                showToast('Salle créée avec succès ! Partagez le lien spectateurs.');
             });
 
             socket.on('room-joined', (data) => {
                 currentRoomId = data.roomId;
                 isHost = data.isHost;
-                myName = data.participants.find(p => p.id === mySocketId)?.name || 'Invité';
+                myName = data.participants.find(p => p.id === mySocketId)?.name || 'Spectateur';
                 
                 initRoomUI(data);
                 
                 if (!isHost) {
-                    showToast('Vous avez rejoint la salle. En attente du flux de l\'hôte...');
+                    showToast('Vous avez rejoint la salle en tant que spectateur.');
                 }
             });
 
             socket.on('stream-changed', (data) => {
                 document.getElementById('contentTitle').innerHTML = `
-                    ${data.contentTitle || 'Contenu en cours'}
+                    ${data.contentTitle || 'Programme en cours'}
                     ${isHost ? '' : '<span class="text-xs ml-2 px-2 py-0.5 bg-white/10 rounded">• synchronisé</span>'}
                 `;
                 
                 if (data.streamUrl) {
                     loadStream(data.streamUrl);
                     
-                    // Mettre à jour les inputs si hôte
                     if (isHost) {
                         document.getElementById('streamUrlInput').value = data.streamUrl;
                         document.getElementById('contentTitleInput').value = data.contentTitle || '';
@@ -633,10 +627,9 @@
             });
 
             socket.on('video-sync', (data) => {
-                if (!videoElement || isHost) return; // L'hôte ne reçoit pas ses propres commandes
+                if (!videoElement || isHost) return;
 
                 const now = Date.now();
-                // Éviter de trop syncroniser
                 if (now - lastSyncTime < 600) return;
                 lastSyncTime = now;
 
@@ -644,22 +637,16 @@
 
                 if (data.action === 'play' || data.action === 'sync') {
                     if (!videoElement.paused) {
-                        if (diff > 1.2) {
-                            videoElement.currentTime = data.currentTime;
-                        }
+                        if (diff > 1.2) videoElement.currentTime = data.currentTime;
                     } else {
                         videoElement.currentTime = data.currentTime;
                         videoElement.play().catch(() => {});
                     }
-                } 
-                else if (data.action === 'pause') {
+                } else if (data.action === 'pause') {
                     videoElement.pause();
                     if (diff > 0.8) videoElement.currentTime = data.currentTime;
-                } 
-                else if (data.action === 'seek') {
-                    if (diff > 0.6) {
-                        videoElement.currentTime = data.currentTime;
-                    }
+                } else if (data.action === 'seek') {
+                    if (diff > 0.6) videoElement.currentTime = data.currentTime;
                 }
             });
 
@@ -669,10 +656,6 @@
 
             socket.on('participant-joined', (data) => {
                 showToast(`${data.name} a rejoint la salle`);
-            });
-
-            socket.on('participant-left', (data) => {
-                // Optionnel: toast discret
             });
 
             socket.on('chat-message', (msg) => {
@@ -685,29 +668,23 @@
         }
 
         function initRoomUI(data) {
-            // Room code
             document.getElementById('roomCode').textContent = data.roomId;
-            
-            // Username
             document.getElementById('myUsername').textContent = myName;
             
-            // Content title
             const titleEl = document.getElementById('contentTitle');
             titleEl.innerHTML = `
-                ${data.contentTitle || 'En attente du contenu...'}
+                ${data.contentTitle || 'En attente du programme...'}
                 ${isHost ? '' : '<span class="text-xs ml-2 px-2.5 py-px bg-white/10 rounded-full align-middle">sync</span>'}
             `;
             
-            // Participants
-            updateParticipantsList(data.participants || []);
+            const urlDisplay = document.getElementById('streamUrlDisplay');
             
-            // Show/hide host UI
             if (isHost) {
                 document.getElementById('hostControlsHeader').classList.remove('hidden');
                 document.getElementById('hostControlsHeader').classList.add('flex');
                 document.getElementById('hostStreamPanel').classList.remove('hidden');
+                if (urlDisplay) urlDisplay.style.display = 'block';
                 
-                // Pré-remplir si déjà un flux
                 if (data.streamUrl) {
                     document.getElementById('streamUrlInput').value = data.streamUrl;
                     document.getElementById('contentTitleInput').value = data.contentTitle || '';
@@ -715,9 +692,9 @@
             } else {
                 document.getElementById('hostStreamPanel').classList.add('hidden');
                 document.getElementById('customControls').classList.add('hidden');
+                if (urlDisplay) urlDisplay.style.display = 'none';
             }
 
-            // Charger le flux existant si présent
             if (data.streamUrl) {
                 setTimeout(() => {
                     loadStream(data.streamUrl);
@@ -726,7 +703,6 @@
                 document.getElementById('noStreamOverlay').classList.remove('hidden');
             }
 
-            // Appliquer l'état vidéo initial (surtout pour les viewers)
             if (data.videoState && !isHost) {
                 setTimeout(() => {
                     if (videoElement && data.videoState.currentTime) {
@@ -740,10 +716,8 @@
                 }, 800);
             }
 
-            // Init video controls
             initVideoPlayer();
 
-            // Message de bienvenue dans le chat
             setTimeout(() => {
                 const chat = document.getElementById('chatMessages');
                 if (chat.children.length === 0) {
@@ -781,7 +755,7 @@
                     
                     ${p.isHost ? `
                         <div class="host-badge text-[9px] font-bold px-2.5 py-px rounded-2xl text-white flex items-center">
-                            HÔTE
+                            ADMIN
                         </div>
                     ` : ''}
                 `;
@@ -823,7 +797,6 @@
             input.value = '';
         }
 
-        // ==================== INITIALISATION ====================
         function initializeRoom() {
             const urlParams = new URLSearchParams(window.location.search);
             const roomId = urlParams.get('roomId');
@@ -838,21 +811,17 @@
             }
 
             currentRoomId = roomId;
-            myName = usernameParam || 'Invité';
+            myName = usernameParam || 'Spectateur';
             document.getElementById('myUsername').textContent = myName;
 
-            // Setup listeners
             setupSocketListeners();
 
-            // Rejoindre ou créer
             if (hostToken) {
-                // Création en tant qu'hôte
                 socket.emit('create-room', {
                     username: myName,
                     contentTitle: titleParam || ''
                 });
             } else {
-                // Rejoindre en tant que viewer
                 socket.emit('join-room', {
                     roomId: roomId,
                     username: myName,
@@ -860,12 +829,6 @@
                 });
             }
 
-            // Raccourci clavier pour chat
-            document.getElementById('chatInput').addEventListener('focus', () => {
-                // Optionnel
-            });
-
-            // Avertissement si pas HTTPS (certains navigateurs bloquent les flux)
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
                 setTimeout(() => {
                     showToast('Conseil : Utilisez HTTPS pour une meilleure compatibilité avec les flux IPTV', 'warning');
@@ -873,20 +836,10 @@
             }
         }
 
-        // Lancement
         window.onload = function() {
             initializeRoom();
-            
-            // Petit conseil pour l'hôte
-            setTimeout(() => {
-                const hostPanel = document.getElementById('hostStreamPanel');
-                if (hostPanel && !hostPanel.classList.contains('hidden')) {
-                    // déjà visible
-                }
-            }, 2000);
         };
 
-        // Exposer quelques fonctions pour debug (console)
         window.debugIPTV = {
             forceSync: () => socket.emit('request-sync', { roomId: currentRoomId }),
             getState: () => ({ roomId: currentRoomId, isHost, streamUrl: currentStreamUrl })
