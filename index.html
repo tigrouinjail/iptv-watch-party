@@ -85,7 +85,6 @@
                     return;
                 }
 
-                // Get live streams
                 const streamsUrl = `${host}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
                 const proxyStreams = 'https://corsproxy.io/?' + encodeURIComponent(streamsUrl);
 
@@ -126,7 +125,6 @@
 
         function loadVideo(url, title) {
             if (!url) return;
-            // Most Xtream streams are .ts, some providers have .m3u8
             if (Hls.isSupported() && url.includes('.m3u8')) {
                 const hls = new Hls();
                 hls.loadSource(url);
