@@ -38,13 +38,13 @@
                 <div id="adminPanel" class="hidden glass p-5 rounded-3xl">
                     <h3 class="font-bold mb-4">Panel Admin - Xtream</h3>
 
-                    <div class="space-y-3 mb-4">
+                    <div class="space-y-2 mb-4">
                         <input id="host" value="http://2970702.fluxitv.top" class="w-full p-2 rounded bg-black/40 text-sm" placeholder="Host">
                         <input id="username" value="K97Z86M9" class="w-full p-2 rounded bg-black/40 text-sm" placeholder="Username">
                         <input id="password" value="URGNZY" class="w-full p-2 rounded bg-black/40 text-sm" placeholder="Password" type="password">
                         
                         <button onclick="loginXtream()" class="w-full bg-rose-600 py-2.5 rounded font-semibold">
-                            Se connecter &amp; Charger mes chaînes
+                            Se connecter &amp; Charger les chaînes
                         </button>
                     </div>
 
@@ -64,42 +64,45 @@
         }
 
         async function loginXtream() {
-            const host = document.getElementById('host').value.trim();
+            const host = document.getElementById('host').value.trim().replace(/\/$/, '');
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
 
             if (!host || !username || !password) {
-                alert('Veuillez remplir tous les champs');
+                alert('Veuillez remplir Host, Username et Password');
                 return;
             }
 
-            const m3uUrl = `${host}/get.php?username=${username}&password=${password}&type=m3u&output=mpegts`;
+            const authUrl = `${host}/player_api.php?username=${username}&password=${password}`;
+            const proxyAuth = 'https://corsproxy.io/?' + encodeURIComponent(authUrl);
 
             try {
-                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(m3uUrl);
-                const res = await fetch(proxyUrl);
-                const text = await res.text();
-                channels = parseM3U(text);
-                renderChannelList();
-            } catch (e) {
-                alert('Erreur de connexion. Vérifie tes identifiants ou colle le fichier .m3u manuellement.');
-            }
-        }
+                const res = await fetch(proxyAuth);
+                const data = await res.json();
 
-        function parseM3U(content) {
-            const lines = content.split('\n');
-            const result = [];
-            let name = '';
-            for (let line of lines) {
-                line = line.trim();
-                if (line.startsWith('#EXTINF:')) {
-                    const match = line.match(/,(.+)$/);
-                    name = match ? match[1] : 'Chaîne';
-                } else if (line && !line.startsWith('#')) {
-                    result.push({ name, url: line });
+                if (!data.user_info || data.user_info.auth !== 1) {
+                    alert('Identifiants incorrects ou compte expiré');
+                    return;
                 }
+
+                // Get live streams
+                const streamsUrl = `${host}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
+                const proxyStreams = 'https://corsproxy.io/?' + encodeURIComponent(streamsUrl);
+
+                const streamsRes = await fetch(proxyStreams);
+                const streams = await streamsRes.json();
+
+                channels = streams.map(s => ({
+                    name: s.name,
+                    url: `${host}/live/${username}/${password}/${s.stream_id}.ts`
+                }));
+
+                renderChannelList();
+
+            } catch (e) {
+                alert('Erreur lors de la connexion Xtream. Essaie de coller le fichier .m3u manuellement.');
+                console.error(e);
             }
-            return result;
         }
 
         function renderChannelList() {
@@ -123,8 +126,8 @@
 
         function loadVideo(url, title) {
             if (!url) return;
-            const isHLS = url.includes('.m3u8');
-            if (isHLS && Hls.isSupported()) {
+            // Most Xtream streams are .ts, some providers have .m3u8
+            if (Hls.isSupported() && url.includes('.m3u8')) {
                 const hls = new Hls();
                 hls.loadSource(url);
                 hls.attachMedia(video);
@@ -141,7 +144,6 @@
             alert('Lien spectateurs copié !');
         }
 
-        // Load shared link
         function initFromURL() {
             const params = new URLSearchParams(location.search);
             const stream = params.get('stream');
