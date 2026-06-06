@@ -5,327 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regardons Ensemble • IPTV</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body { font-family: system-ui, sans-serif; background: #0f172a; color: white; }
         .cinema { background: linear-gradient(135deg, #0f172a, #1e1135); }
-        video { background: black; }
-        .channel-item { transition: all 0.2s; }
-        .channel-item:hover { background-color: rgba(255,255,255,0.1); }
-        .channel-item.active { background-color: #e11d48; color: white; }
     </style>
 </head>
-<body class="cinema min-h-screen">
-    <div class="max-w-6xl mx-auto p-6">
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-x-3">
-                <div class="w-10 h-10 bg-rose-600 rounded-2xl flex items-center justify-center">
-                    <i class="fa-solid fa-tv text-white text-2xl"></i>
-                </div>
-                <h1 class="text-3xl font-bold">Regardons Ensemble</h1>
+<body class="cinema min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full mx-auto p-8 text-center">
+        <div class="mb-8">
+            <div class="w-20 h-20 bg-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <i class="fa-solid fa-tv text-white text-5xl"></i>
             </div>
-            <button onclick="toggleAdmin()" 
-                    class="px-5 py-2 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center gap-x-2 text-sm">
-                <i class="fa-solid fa-user-shield"></i>
-                <span>Mode Admin</span>
-            </button>
+            <h1 class="text-4xl font-bold mb-2">Regardons Ensemble</h1>
+            <p class="text-white/60">Ta solution IPTV simple</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="bg-white/5 border border-white/10 rounded-3xl p-8 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Meilleure solution recommandée</h2>
             
-            <!-- VIDEO -->
-            <div class="lg:col-span-8">
-                <div class="bg-black rounded-3xl overflow-hidden shadow-2xl aspect-video mb-4">
-                    <video id="video" class="w-full h-full" controls playsinline></video>
-                </div>
+            <div class="mb-6">
+                <p class="text-white/70 mb-4">Pour ton compte Xtream Codes, utilise <strong>IPTVnator</strong> (le plus complet et stable) :</p>
                 
-                <div class="text-center">
-                    <div id="currentTitle" class="text-2xl font-semibold mb-1">Aucun contenu diffusé</div>
-                    <div id="currentChannel" class="text-sm text-white/50"></div>
-                </div>
+                <a href="https://iptvnator.vercel.app/" target="_blank"
+                   class="inline-flex items-center justify-center w-full bg-rose-600 hover:bg-rose-500 transition-colors px-6 py-4 rounded-2xl font-semibold text-lg gap-x-3">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Ouvrir IPTVnator (Web)</span>
+                </a>
             </div>
 
-            <!-- CHANNEL LIST -->
-            <div class="lg:col-span-4">
-                <div id="channelPanel" class="hidden bg-white/5 border border-white/10 rounded-3xl p-4 h-[500px] flex flex-col">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="font-semibold">Mes Chaînes</div>
-                        <div id="channelCount" class="text-xs bg-white/10 px-2 py-0.5 rounded">0</div>
-                    </div>
-                    
-                    <input type="text" id="searchInput" placeholder="Rechercher une chaîne..." 
-                           class="w-full bg-black/40 border border-white/20 px-3 py-2 rounded-2xl text-sm mb-3"
-                           oninput="filterChannels()">
-                    
-                    <div id="channelList" class="flex-1 overflow-y-auto space-y-1 pr-1 text-sm">
-                        <!-- Channels loaded dynamically -->
-                    </div>
+            <div class="text-left text-sm bg-black/30 p-4 rounded-2xl">
+                <p class="font-semibold mb-2">Identifiants à entrer :</p>
+                <div class="space-y-1 font-mono text-xs">
+                    <div><span class="text-white/50">Host :</span> http://2970702.fluxitv.top</div>
+                    <div><span class="text-white/50">Username :</span> K97Z86M9</div>
+                    <div><span class="text-white/50">Password :</span> URGNZY</div>
                 </div>
             </div>
         </div>
 
-        <!-- ADMIN CONTROLS -->
-        <div id="adminPanel" class="hidden max-w-4xl mx-auto mt-8 bg-white/5 border border-white/10 rounded-3xl p-6">
-            <h2 class="text-xl font-bold mb-4 flex items-center gap-x-2">
-                <i class="fa-solid fa-crown text-rose-400"></i> 
-                Panel Admin
-            </h2>
-            
-            <div class="mb-4">
-                <label class="block text-sm mb-1 text-white/70">Lien M3U de ton provider</label>
-                <input id="m3uUrl" type="text" 
-                       value="http://2970702.fluxitv.top/get.php?username=K97Z86M9&password=URGNZY&type=m3u&output=mpegts"
-                       class="w-full bg-black/40 border border-white/20 px-4 py-3 rounded-2xl text-sm">
-                
-                <div class="flex gap-3 mt-2">
-                    <button onclick="loadM3UFromURL()" 
-                            class="flex-1 bg-rose-600 hover:bg-rose-500 py-2.5 rounded-2xl text-sm font-semibold">
-                        Charger la playlist
-                    </button>
-                    <button onclick="tryWithProxy()" 
-                            class="flex-1 bg-white/10 hover:bg-white/20 py-2.5 rounded-2xl text-sm">
-                        Essayer avec proxy (bypass)
-                    </button>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-sm mb-1 text-white/70">Ou colle directement le contenu du fichier .m3u</label>
-                <textarea id="m3uContent" rows="3" placeholder="Colle ici le contenu de ton fichier playlist.m3u" 
-                          class="w-full bg-black/40 border border-white/20 px-4 py-3 rounded-2xl text-sm font-mono"></textarea>
-                <button onclick="loadM3UFromText()" 
-                        class="mt-2 w-full bg-white/10 hover:bg-white/20 py-2 rounded-2xl text-sm">
-                    Charger le contenu collé
-                </button>
-            </div>
+        <div class="text-xs text-white/40">
+            IPTVnator supporte parfaitement les comptes Xtream.<br>
+            Liste de chaînes + EPG inclus.
         </div>
     </div>
-
-    <script>
-        const video = document.getElementById('video');
-        let hls = null;
-        let channels = [];
-        let currentChannel = null;
-
-        const ADMIN_PASSWORD = "admin123";
-
-        function toggleAdmin() {
-            const panel = document.getElementById('adminPanel');
-            const channelPanel = document.getElementById('channelPanel');
-            
-            if (panel.classList.contains('hidden')) {
-                const pass = prompt("Mot de passe Admin :");
-                if (pass === ADMIN_PASSWORD) {
-                    panel.classList.remove('hidden');
-                    channelPanel.classList.remove('hidden');
-                } else {
-                    alert("Mot de passe incorrect");
-                }
-            } else {
-                panel.classList.add('hidden');
-            }
-        }
-
-        function loadStream(url, title = "", channelName = "") {
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-            video.src = "";
-
-            const isHLS = url.includes('.m3u8');
-
-            if (isHLS && Hls.isSupported()) {
-                hls = new Hls();
-                hls.loadSource(url);
-                hls.attachMedia(video);
-            } else {
-                video.src = url;
-            }
-
-            document.getElementById('currentTitle').textContent = title || channelName || "Contenu diffusé";
-            document.getElementById('currentChannel').textContent = channelName ? `Chaîne : ${channelName}` : '';
-
-            currentChannel = { url, title: title || channelName, channelName };
-            video.play().catch(() => {});
-        }
-
-        function parseM3U(content) {
-            const lines = content.split('\n');
-            const result = [];
-            let currentName = '';
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                
-                if (line.startsWith('#EXTINF:')) {
-                    const match = line.match(/,(.+)$/);
-                    currentName = match ? match[1].trim() : 'Chaîne sans nom';
-                } 
-                else if (line && !line.startsWith('#') && currentName) {
-                    result.push({ name: currentName, url: line });
-                    currentName = '';
-                }
-            }
-            return result;
-        }
-
-        function displayChannels(filteredChannels) {
-            const container = document.getElementById('channelList');
-            container.innerHTML = '';
-            document.getElementById('channelCount').textContent = filteredChannels.length;
-            
-            filteredChannels.forEach((channel) => {
-                const div = document.createElement('div');
-                div.className = `channel-item px-3 py-2.5 rounded-2xl cursor-pointer flex items-center justify-between ${currentChannel && currentChannel.url === channel.url ? 'active' : ''}`;
-                
-                div.innerHTML = `
-                    <div>
-                        <span>${channel.name}</span>
-                    </div>
-                `;
-                
-                div.onclick = () => {
-                    loadStream(channel.url, '', channel.name);
-                    document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-                    div.classList.add('active');
-                };
-                container.appendChild(div);
-            });
-        }
-
-        function filterChannels() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = channels.filter(ch => ch.name.toLowerCase().includes(search));
-            displayChannels(filtered);
-        }
-
-        // Main function with CORS bypass
-        async function loadM3U(url) {
-            try {
-                // Try direct first
-                let response = await fetch(url);
-                if (!response.ok) throw new Error('Direct fetch failed');
-                
-                const text = await response.text();
-                channels = parseM3U(text);
-                
-                if (channels.length > 0) {
-                    displayChannels(channels);
-                    return true;
-                }
-            } catch (e) {
-                console.log('Direct fetch failed, trying proxy...');
-            }
-
-            // Fallback with CORS proxy
-            try {
-                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) throw new Error('Proxy failed');
-                
-                const text = await response.text();
-                channels = parseM3U(text);
-                
-                if (channels.length > 0) {
-                    displayChannels(channels);
-                    return true;
-                }
-            } catch (e) {
-                console.error('Proxy also failed');
-                return false;
-            }
-            return false;
-        }
-
-        async function loadM3UFromURL() {
-            const url = document.getElementById('m3uUrl').value.trim();
-            if (!url) {
-                alert("Veuillez entrer un lien M3U");
-                return;
-            }
-
-            const success = await loadM3U(url);
-            
-            if (!success) {
-                alert("Impossible de charger la playlist automatiquement.\nEssaie de coller directement le contenu du fichier .m3u en bas.");
-            }
-        }
-
-        async function tryWithProxy() {
-            const url = document.getElementById('m3uUrl').value.trim();
-            if (!url) {
-                alert("Veuillez entrer un lien M3U");
-                return;
-            }
-
-            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-            const success = await loadM3U(proxyUrl);
-            
-            if (!success) {
-                alert("Le proxy n'a pas fonctionné non plus.\nEssaie de coller le contenu du fichier .m3u.");
-            }
-        }
-
-        function loadM3UFromText() {
-            const content = document.getElementById('m3uContent').value.trim();
-            if (!content) {
-                alert("Veuillez coller le contenu");
-                return;
-            }
-
-            channels = parseM3U(content);
-            
-            if (channels.length === 0) {
-                alert("Aucune chaîne trouvée dans le texte collé");
-                return;
-            }
-            
-            displayChannels(channels);
-        }
-
-        function copyViewerLink() {
-            if (!currentChannel) {
-                alert("Aucun contenu sélectionné");
-                return;
-            }
-
-            const params = new URLSearchParams();
-            params.set('stream', currentChannel.url);
-            if (currentChannel.channelName) params.set('title', currentChannel.channelName);
-            
-            const link = window.location.origin + window.location.pathname + '?' + params.toString();
-            navigator.clipboard.writeText(link).then(() => {
-                alert("Lien spectateurs copié !");
-            });
-        }
-
-        function initFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            const stream = params.get('stream');
-            const title = params.get('title');
-
-            if (stream) {
-                loadStream(stream, '', title || '');
-            }
-        }
-
-        window.onload = function() {
-            initFromURL();
-            
-            document.addEventListener('keydown', function(e) {
-                if (e.key.toLowerCase() === 'a' && document.getElementById('adminPanel').classList.contains('hidden')) {
-                    const pass = prompt("Mot de passe Admin :");
-                    if (pass === ADMIN_PASSWORD) {
-                        document.getElementById('adminPanel').classList.remove('hidden');
-                        document.getElementById('channelPanel').classList.remove('hidden');
-                    }
-                }
-            });
-        };
-    </script>
 </body>
 </html>
