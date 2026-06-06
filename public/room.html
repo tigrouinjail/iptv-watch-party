@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salle • Regardons Ensemble</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Poppins:wght@600&amp;display=swap');
+        
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .title-font { font-family: 'Poppins', system_ui, sans-serif; font-weight: 600; letter-spacing: -0.025em; }
+
+        .cinema-bg { background: #0a0f1c; }
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(148, 163, 184, 0.15); }
+        
+        .video-container {
+            background: #000;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            outline: none;
+        }
+
+        .custom-controls {
+            background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+        }
+
+        .participant-item {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chat-message {
+            animation: fadeInUp 0.2s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .sync-badge {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .host-badge {
+            background: linear-gradient(90deg, #e11d48, #be123c);
+            box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.2);
+        }
+
+        .stream-input {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .video-overlay {
+            background: linear-gradient(
+                180deg,
+                rgba(0,0,0,0.3) 0%,
+                transparent 15%,
+                transparent 85%,
+                rgba(0,0,0,0.65) 100%
+            );
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="cinema-bg text-white">
+    <!-- Top Bar -->
+    <div class="border-b border-white/10 bg-black/40 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-x-4">
+                <!-- Logo -->
+                <div class="flex items-center gap-x-3">
+                    <div class="w-9 h-9 bg-rose-600 rounded-2xl flex items-center justify-center shadow-inner">
+                        <i class="fa-solid fa-tv text-white"></i>
+                    </div>
+                    <div>
+                        <span class="title-font text-2xl font-bold tracking-tighter">Regardons</span>
+                        <span class="title-font text-2xl font-bold tracking-tighter text-rose-500">Ensemble</span>
+                    </div>
+                </div>
+                
+                <!-- Room Info -->
+                <div class="flex items-center gap-x-3 pl-4 border-l border-white/10">
+                    <div>
+                        <div class="flex items-center gap-x-2">
+                            <span class="font-mono text-sm bg-white/10 px-3 py-0.5 rounded-2xl tracking-[2px]" id="roomCode">------</span>
+                            <button onclick="copyRoomLink()" 
+                                    class="text-xs px-3 py-1 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center gap-x-1.5 transition-colors border border-white/10">
+                                <i class="fa-solid fa-link text-xs"></i>
+                                <span class="hidden md:inline text-xs">Copier lien invités</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-x-3">
+                <!-- Status -->
+                <div id="connectionStatus" 
+                     class="flex items-center gap-x-2 text-xs px-3.5 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-3xl border border-emerald-500/20">
+                    <i class="fa-solid fa-wifi"></i>
+                    <span class="font-medium">Connecté</span>
+                </div>
+
+                <!-- User info -->
+                <div class="flex items-center gap-x-2 bg-white/5 border border-white/10 px-2 pr-4 py-1.5 rounded-3xl">
+                    <div class="w-7 h-7 bg-white/20 rounded-2xl flex items-center justify-center overflow-hidden">
+                        <i class="fa-solid fa-user text-sm"></i>
+                    </div>
+                    <div class="text-sm">
+                        <span id="myUsername" class="font-medium"></span>
+                    </div>
+                </div>
+
+                <button onclick="leaveRoom()" 
+                        class="flex items-center gap-x-2 text-sm px-4 py-2 hover:bg-red-500/10 hover:text-red-400 transition-colors rounded-3xl text-white/70">
+                    <i class="fa-solid fa-sign-out-alt"></i>
+                    <span class="hidden md:inline">Quitter</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-screen-2xl mx-auto px-6 pt-6 pb-10">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- VIDEO PLAYER -->
+            <div class="lg:col-span-8">
+                <!-- Content Header -->
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <div>
+                        <div id="contentTitle" 
+                             class="text-2xl font-semibold tracking-tight flex items-center gap-x-3">
+                            <!-- Titre mis à jour dynamiquement -->
+                        </div>
+                        <div id="streamUrlDisplay" class="text-xs text-white/40 font-mono truncate max-w-[420px]"></div>
+                    </div>
+                    
+                    <!-- Host only controls -->
+                    <div id="hostControlsHeader" class="hidden items-center gap-x-2">
+                        <div class="px-3 py-1 bg-rose-500/10 text-rose-400 text-xs font-semibold rounded-3xl flex items-center gap-x-1.5 border border-rose-500/20">
+                            <i class="fa-solid fa-crown"></i>
+                            <span>VOUS ÊTES L'HÔTE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Container -->
+                <div class="video-container aspect-video w-full shadow-2xl relative group" style="max-height: 70vh;">
+                    <video id="videoPlayer" class="w-full h-full" playsinline></video>
+                    
+                    <!-- Overlay when no stream -->
+                    <div id="noStreamOverlay" 
+                         class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-10">
+                        <div class="text-center px-8">
+                            <i class="fa-solid fa-play-circle text-6xl text-white/30 mb-4"></i>
+                            <h3 class="text-xl font-semibold mb-2">Aucun flux en cours</h3>
+                            <p id="noStreamText" class="text-white/60 max-w-xs mx-auto">L'hôte n'a pas encore sélectionné de contenu IPTV.</p>
+                        </div>
+                    </div>
+
+                    <!-- Loading overlay -->
+                    <div id="loadingOverlay" class="hidden absolute inset-0 bg-black/60 z-20 flex items-center justify-center">
+                        <div class="flex flex-col items-center">
+                            <div class="w-9 h-9 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
+                            <p class="text-sm text-white/70">Chargement du flux...</p>
+                        </div>
+                    </div>
+
+                    <!-- Custom Controls (Host only) -->
+                    <div id="customControls" class="hidden absolute bottom-0 left-0 right-0 p-4 z-30 custom-controls">
+                        <div class="flex items-center gap-x-4">
+                            
+                            <!-- Play / Pause -->
+                            <button id="playPauseBtn"
+                                    onclick="togglePlayPause()"
+                                    class="w-12 h-12 flex-shrink-0 bg-white text-black hover:bg-white/90 transition-all rounded-2xl flex items-center justify-center shadow-xl">
+                                <i id="playPauseIcon" class="fa-solid fa-play text-2xl ml-0.5"></i>
+                            </button>
+
+                            <!-- Progress -->
+                            <div class="flex-1 flex items-center gap-x-3">
+                                <input type="range" id="seekBar" 
+                                       class="flex-1 accent-rose-500 cursor-pointer"
+                                       min="0" max="100" step="0.1" value="0"
+                                       oninput="seekVideo()">
+                                
+                                <div class="flex items-center gap-x-1 text-xs font-mono text-white/70 w-24 justify-end">
+                                    <span id="currentTime">00:00</span>
+                                    <span class="text-white/40">/</span>
+                                    <span id="duration">00:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Resync all viewers -->
+                            <button onclick="forceSyncAll()"
+                                    class="px-4 py-2.5 text-xs font-semibold bg-white/10 hover:bg-white/15 border border-white/20 rounded-2xl flex items-center gap-x-2 transition-colors">
+                                <i class="fa-solid fa-sync"></i>
+                                <span class="hidden xl:inline">Resync tout le monde</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Host Stream Controls -->
+                <div id="hostStreamPanel" class="hidden mt-4 glass rounded-3xl p-5">
+                    <div class="flex items-center gap-x-2 mb-3">
+                        <i class="fa-solid fa-broadcast-tower text-rose-400"></i>
+                        <span class="font-semibold text-sm tracking-wider">CONTRÔLE DU FLUX IPTV</span>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="flex-1">
+                            <label class="text-xs text-white/60 block mb-1">URL du flux (.m3u8 recommandé)</label>
+                            <input id="streamUrlInput" type="text" placeholder="https://exemple.com/stream.m3u8" 
+                                   class="stream-input w-full bg-black/40 border border-white/20 focus:border-rose-500 px-4 py-3 rounded-2xl text-sm outline-none">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs text-white/60 block mb-1">Titre affiché (optionnel)</label>
+                            <input id="contentTitleInput" type="text" placeholder="Match du soir / Film du moment" 
+                                   class="w-full bg-black/40 border border-white/20 focus:border-rose-500 px-4 py-3 rounded-2xl text-sm outline-none">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="changeStream()"
+                                    class="h-[50px] px-8 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 transition-all rounded-2xl font-semibold flex items-center justify-center gap-x-2 whitespace-nowrap">
+                                <i class="fa-solid fa-play mr-1"></i>
+                                <span>DIFFUSER</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <p class="text-[10px] text-white/40 mt-3 flex items-center gap-x-1">
+                        <i class="fa-solid fa-info-circle"></i> 
+                        <span>Le flux doit être accessible publiquement depuis un navigateur (HLS de préférence). Évitez les liens protégés par token ou géo-blocage.</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- SIDEBAR: Participants + Chat -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                
+                <!-- Participants -->
+                <div class="glass rounded-3xl p-5 flex flex-col h-[280px]">
+                    <div class="flex items-center justify-between mb-4 px-1">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-users"></i> 
+                            <span>PARTICIPANTS</span>
+                            <span id="participantCount" class="font-mono text-xs bg-white/10 px-2 rounded">0</span>
+                        </div>
+                    </div>
+                    
+                    <div id="participantsList" class="flex-1 overflow-y-auto space-y-1 pr-1 custom-scroll">
+                        <!-- Participants injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Chat -->
+                <div class="glass rounded-3xl p-5 flex flex-col flex-1 min-h-[320px]">
+                    <div class="flex items-center justify-between mb-3 px-1">
+                        <div class="section-title flex items-center gap-x-2">
+                            <i class="fa-solid fa-comments"></i> 
+                            <span>CHAT EN DIRECT</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Messages -->
+                    <div id="chatMessages" 
+                         class="flex-1 overflow-y-auto space-y-3 pr-2 text-sm custom-scroll mb-3">
+                        <!-- Messages added dynamically -->
+                    </div>
+                    
+                    <!-- Input -->
+                    <div class="flex gap-x-2">
+                        <input id="chatInput" type="text" placeholder="Écrire un message..." 
+                               class="flex-1 bg-black/40 border border-white/20 focus:border-white/40 px-4 py-2.5 rounded-2xl text-sm outline-none"
+                               onkeypress="if (event.key === 'Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" 
+                                class="px-5 bg-white/10 hover:bg-white/15 border border-white/20 rounded-2xl text-sm font-medium transition-colors">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-[200] space-y-2"></div>
+
+    <script>
+        // ==================== CONFIG ====================
+        const socket = io();
+        let currentRoomId = null;
+        let isHost = false;
+        let currentStreamUrl = null;
+        let hlsInstance = null;
+        let videoElement = null;
+        let lastSyncTime = 0;
+        let mySocketId = null;
+        let myName = 'Invité';
+
+        // ==================== UTILS ====================
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '00:00';
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bg = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-emerald-600';
+            
+            toast.className = `${bg} text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-x-3 text-sm max-w-xs`;
+            toast.innerHTML = `
+                <div class="flex-1">${message}</div>
+                <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white">×</button>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentElement) toast.parentElement.removeChild(toast);
+            }, 4200);
+        }
+
+        function copyToClipboard(text, successMsg = 'Copié !') {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(successMsg);
+            }).catch(() => {
+                // Fallback
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast(successMsg);
+            });
+        }
+
+        function copyRoomLink() {
+            if (!currentRoomId) return;
+            const url = `${window.location.origin}/room.html?roomId=${currentRoomId}`;
+            copyToClipboard(url, 'Lien invités copié ! Partagez-le à vos amis.');
+        }
+
+        function leaveRoom() {
+            if (confirm('Voulez-vous vraiment quitter la salle ?')) {
+                window.location.href = '/';
+            }
+        }
+
+        // ==================== VIDEO PLAYER ====================
+        function initVideoPlayer() {
+            videoElement = document.getElementById('videoPlayer');
+            
+            // Événements pour l'hôte
+            if (isHost) {
+                videoElement.addEventListener('play', () => {
+                    if (currentRoomId) {
+                        socket.emit('video-control', {
+                            roomId: currentRoomId,
+                            action: 'play',
+                            currentTime: videoElement.currentTime
+                        });
+                    }
+                });
+
+                videoElement.addEventListener('pause', () => {
+                    if (currentRoomId) {
+                        socket.emit('video-control', {
+                            roomId: currentRoomId,
+                            action: 'pause',
+                            currentTime: videoElement.currentTime
+                        });
+                    }
+                });
+
+                videoElement.addEventListener('seeked', () => {
+                    if (currentRoomId && !videoElement.seeking) {
+                        socket.emit('video-control', {
+                            roomId: currentRoomId,
+                            action: 'seek',
+                            currentTime: videoElement.currentTime
+                        });
+                    }
+                });
+
+                // Mise à jour périodique du temps (pour les viewers)
+                setInterval(() => {
+                    if (isHost && currentRoomId && !videoElement.paused && videoElement.currentTime > 0) {
+                        socket.emit('video-control', {
+                            roomId: currentRoomId,
+                            action: 'play',
+                            currentTime: videoElement.currentTime
+                        });
+                    }
+                }, 8000); // sync toutes les 8 secondes
+            }
+
+            // Mise à jour de l'UI temps
+            videoElement.addEventListener('timeupdate', () => {
+                if (!isHost) return;
+                
+                const current = document.getElementById('currentTime');
+                const durationEl = document.getElementById('duration');
+                const seek = document.getElementById('seekBar');
+                
+                if (current) current.textContent = formatTime(videoElement.currentTime);
+                if (durationEl && videoElement.duration) durationEl.textContent = formatTime(videoElement.duration);
+                
+                if (seek && videoElement.duration) {
+                    seek.value = (videoElement.currentTime / videoElement.duration) * 100;
+                }
+            });
+        }
+
+        function loadStream(url) {
+            if (!videoElement) return;
+            
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const noStreamOverlay = document.getElementById('noStreamOverlay');
+            
+            loadingOverlay.classList.remove('hidden');
+            noStreamOverlay.classList.add('hidden');
+
+            // Nettoyer l'ancien flux
+            if (hlsInstance) {
+                hlsInstance.destroy();
+                hlsInstance = null;
+            }
+            videoElement.src = '';
+            videoElement.load();
+
+            currentStreamUrl = url;
+
+            // Afficher l'URL
+            const urlDisplay = document.getElementById('streamUrlDisplay');
+            if (urlDisplay) {
+                urlDisplay.textContent = url.length > 65 ? url.substring(0, 62) + '...' : url;
+                urlDisplay.title = url;
+            }
+
+            // Détection HLS
+            const isHLS = url.includes('.m3u8') || url.includes('m3u8');
+
+            if (isHLS && Hls.isSupported()) {
+                hlsInstance = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+                
+                hlsInstance.loadSource(url);
+                hlsInstance.attachMedia(videoElement);
+                
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    loadingOverlay.classList.add('hidden');
+                    showToast('Flux HLS chargé avec succès', 'success');
+                    
+                    if (isHost) {
+                        document.getElementById('customControls').classList.remove('hidden');
+                        document.getElementById('customControls').classList.add('flex');
+                    }
+                });
+
+                hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('HLS Error:', data);
+                    loadingOverlay.classList.add('hidden');
+                    showToast('Erreur de chargement du flux HLS. Vérifiez l\'URL.', 'error');
+                });
+            } else {
+                // Essai natif (mp4, webm ou certains flux)
+                videoElement.src = url;
+                
+                videoElement.onloadedmetadata = () => {
+                    loadingOverlay.classList.add('hidden');
+                    showToast('Flux chargé', 'success');
+                    
+                    if (isHost) {
+                        document.getElementById('customControls').classList.remove('hidden');
+                        document.getElementById('customControls').classList.add('flex');
+                    }
+                };
+
+                videoElement.onerror = () => {
+                    loadingOverlay.classList.add('hidden');
+                    showToast('Impossible de lire ce flux. Essayez un lien .m3u8 ou testez-le dans VLC.', 'error');
+                    document.getElementById('noStreamOverlay').classList.remove('hidden');
+                    document.getElementById('noStreamText').textContent = 'Le flux n\'a pas pu être lu par le navigateur.';
+                };
+            }
+        }
+
+        function togglePlayPause() {
+            if (!videoElement || !isHost) return;
+
+            if (videoElement.paused) {
+                videoElement.play().catch(e => console.log('Play error', e));
+            } else {
+                videoElement.pause();
+            }
+        }
+
+        function seekVideo() {
+            if (!videoElement || !isHost) return;
+            
+            const seekBar = document.getElementById('seekBar');
+            const percent = parseFloat(seekBar.value);
+            const newTime = (percent / 100) * (videoElement.duration || 0);
+            
+            videoElement.currentTime = newTime;
+            
+            // Envoyer immédiatement
+            socket.emit('video-control', {
+                roomId: currentRoomId,
+                action: 'seek',
+                currentTime: newTime
+            });
+        }
+
+        function forceSyncAll() {
+            if (!isHost || !currentRoomId || !videoElement) return;
+            
+            socket.emit('video-control', {
+                roomId: currentRoomId,
+                action: videoElement.paused ? 'pause' : 'play',
+                currentTime: videoElement.currentTime
+            });
+            
+            showToast('Synchronisation forcée envoyée à tout le monde');
+        }
+
+        // ==================== HOST ACTIONS ====================
+        function changeStream() {
+            if (!isHost || !currentRoomId) {
+                showToast('Seul l\'hôte peut changer le flux', 'error');
+                return;
+            }
+
+            const urlInput = document.getElementById('streamUrlInput').value.trim();
+            const titleInput = document.getElementById('contentTitleInput').value.trim();
+
+            if (!urlInput) {
+                showToast('Veuillez entrer une URL de flux IPTV', 'warning');
+                return;
+            }
+
+            socket.emit('change-stream', {
+                roomId: currentRoomId,
+                streamUrl: urlInput,
+                contentTitle: titleInput || 'Contenu IPTV'
+            });
+        }
+
+        // ==================== SOCKET EVENTS ====================
+        function setupSocketListeners() {
+            socket.on('connect', () => {
+                mySocketId = socket.id;
+                document.getElementById('connectionStatus').innerHTML = `
+                    <i class="fa-solid fa-wifi"></i>
+                    <span class="font-medium">Connecté</span>
+                `;
+                document.getElementById('connectionStatus').className = 'flex items-center gap-x-2 text-xs px-3.5 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-3xl border border-emerald-500/20';
+            });
+
+            socket.on('disconnect', () => {
+                document.getElementById('connectionStatus').innerHTML = `
+                    <i class="fa-solid fa-wifi-slash"></i>
+                    <span class="font-medium">Déconnecté</span>
+                `;
+                document.getElementById('connectionStatus').className = 'flex items-center gap-x-2 text-xs px-3.5 py-1.5 bg-red-500/10 text-red-400 rounded-3xl border border-red-500/20';
+            });
+
+            socket.on('room-created', (data) => {
+                currentRoomId = data.roomId;
+                isHost = data.isHost;
+                myName = data.participants.find(p => p.id === mySocketId)?.name || 'Hôte';
+                
+                initRoomUI(data);
+                showToast('Salle créée avec succès ! Partagez le lien aux invités.');
+            });
+
+            socket.on('room-joined', (data) => {
+                currentRoomId = data.roomId;
+                isHost = data.isHost;
+                myName = data.participants.find(p => p.id === mySocketId)?.name || 'Invité';
+                
+                initRoomUI(data);
+                
+                if (!isHost) {
+                    showToast('Vous avez rejoint la salle. En attente du flux de l\'hôte...');
+                }
+            });
+
+            socket.on('stream-changed', (data) => {
+                document.getElementById('contentTitle').innerHTML = `
+                    ${data.contentTitle || 'Contenu en cours'}
+                    ${isHost ? '' : '<span class="text-xs ml-2 px-2 py-0.5 bg-white/10 rounded">• synchronisé</span>'}
+                `;
+                
+                if (data.streamUrl) {
+                    loadStream(data.streamUrl);
+                    
+                    // Mettre à jour les inputs si hôte
+                    if (isHost) {
+                        document.getElementById('streamUrlInput').value = data.streamUrl;
+                        document.getElementById('contentTitleInput').value = data.contentTitle || '';
+                    }
+                } else {
+                    document.getElementById('noStreamOverlay').classList.remove('hidden');
+                }
+            });
+
+            socket.on('video-sync', (data) => {
+                if (!videoElement || isHost) return; // L'hôte ne reçoit pas ses propres commandes
+
+                const now = Date.now();
+                // Éviter de trop syncroniser
+                if (now - lastSyncTime < 600) return;
+                lastSyncTime = now;
+
+                const diff = Math.abs(videoElement.currentTime - data.currentTime);
+
+                if (data.action === 'play' || data.action === 'sync') {
+                    if (!videoElement.paused) {
+                        if (diff > 1.2) {
+                            videoElement.currentTime = data.currentTime;
+                        }
+                    } else {
+                        videoElement.currentTime = data.currentTime;
+                        videoElement.play().catch(() => {});
+                    }
+                } 
+                else if (data.action === 'pause') {
+                    videoElement.pause();
+                    if (diff > 0.8) videoElement.currentTime = data.currentTime;
+                } 
+                else if (data.action === 'seek') {
+                    if (diff > 0.6) {
+                        videoElement.currentTime = data.currentTime;
+                    }
+                }
+            });
+
+            socket.on('participants-updated', (data) => {
+                updateParticipantsList(data.participants);
+            });
+
+            socket.on('participant-joined', (data) => {
+                showToast(`${data.name} a rejoint la salle`);
+            });
+
+            socket.on('participant-left', (data) => {
+                // Optionnel: toast discret
+            });
+
+            socket.on('chat-message', (msg) => {
+                addChatMessage(msg);
+            });
+
+            socket.on('error', (err) => {
+                showToast(err.message || 'Une erreur est survenue', 'error');
+            });
+        }
+
+        function initRoomUI(data) {
+            // Room code
+            document.getElementById('roomCode').textContent = data.roomId;
+            
+            // Username
+            document.getElementById('myUsername').textContent = myName;
+            
+            // Content title
+            const titleEl = document.getElementById('contentTitle');
+            titleEl.innerHTML = `
+                ${data.contentTitle || 'En attente du contenu...'}
+                ${isHost ? '' : '<span class="text-xs ml-2 px-2.5 py-px bg-white/10 rounded-full align-middle">sync</span>'}
+            `;
+            
+            // Participants
+            updateParticipantsList(data.participants || []);
+            
+            // Show/hide host UI
+            if (isHost) {
+                document.getElementById('hostControlsHeader').classList.remove('hidden');
+                document.getElementById('hostControlsHeader').classList.add('flex');
+                document.getElementById('hostStreamPanel').classList.remove('hidden');
+                
+                // Pré-remplir si déjà un flux
+                if (data.streamUrl) {
+                    document.getElementById('streamUrlInput').value = data.streamUrl;
+                    document.getElementById('contentTitleInput').value = data.contentTitle || '';
+                }
+            } else {
+                document.getElementById('hostStreamPanel').classList.add('hidden');
+                document.getElementById('customControls').classList.add('hidden');
+            }
+
+            // Charger le flux existant si présent
+            if (data.streamUrl) {
+                setTimeout(() => {
+                    loadStream(data.streamUrl);
+                }, 300);
+            } else {
+                document.getElementById('noStreamOverlay').classList.remove('hidden');
+            }
+
+            // Appliquer l'état vidéo initial (surtout pour les viewers)
+            if (data.videoState && !isHost) {
+                setTimeout(() => {
+                    if (videoElement && data.videoState.currentTime) {
+                        videoElement.currentTime = data.videoState.currentTime;
+                    }
+                    if (videoElement && data.videoState.paused) {
+                        videoElement.pause();
+                    } else if (videoElement) {
+                        videoElement.play().catch(() => {});
+                    }
+                }, 800);
+            }
+
+            // Init video controls
+            initVideoPlayer();
+
+            // Message de bienvenue dans le chat
+            setTimeout(() => {
+                const chat = document.getElementById('chatMessages');
+                if (chat.children.length === 0) {
+                    const welcome = document.createElement('div');
+                    welcome.className = 'text-center text-xs text-white/40 py-4';
+                    welcome.innerHTML = `Bienvenue dans la salle <span class="font-mono">${data.roomId}</span> !`;
+                    chat.appendChild(welcome);
+                }
+            }, 1200);
+        }
+
+        function updateParticipantsList(participants) {
+            const container = document.getElementById('participantsList');
+            container.innerHTML = '';
+            
+            const countEl = document.getElementById('participantCount');
+            countEl.textContent = participants.length;
+
+            participants.forEach(p => {
+                const div = document.createElement('div');
+                div.className = `participant-item flex items-center justify-between px-3 py-2.5 rounded-2xl ${p.isHost ? 'bg-rose-500/10' : 'hover:bg-white/5'}`;
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-x-3">
+                        <div class="w-8 h-8 rounded-2xl ${p.isHost ? 'bg-gradient-to-br from-rose-500 to-pink-600' : 'bg-white/10'} flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid ${p.isHost ? 'fa-crown text-white' : 'fa-user text-white/70'} text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-sm flex items-center gap-x-1.5">
+                                ${p.name}
+                                ${p.id === mySocketId ? '<span class="text-[9px] px-1.5 py-px bg-white/10 rounded">vous</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${p.isHost ? `
+                        <div class="host-badge text-[9px] font-bold px-2.5 py-px rounded-2xl text-white flex items-center">
+                            HÔTE
+                        </div>
+                    ` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addChatMessage(msg) {
+            const container = document.getElementById('chatMessages');
+            
+            const div = document.createElement('div');
+            div.className = `chat-message flex gap-x-2 ${msg.name === myName ? 'justify-end' : ''}`;
+            
+            const isMe = msg.name === myName;
+            
+            div.innerHTML = `
+                <div class="${isMe ? 'bg-rose-600 text-white' : 'bg-white/10'} max-w-[75%] px-3.5 py-2 rounded-2xl ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}">
+                    ${!isMe ? `<div class="text-[10px] text-white/50 mb-0.5 font-medium">${msg.name}</div>` : ''}
+                    <div class="text-sm leading-snug">${msg.message}</div>
+                    <div class="text-right text-[9px] mt-0.5 ${isMe ? 'text-white/60' : 'text-white/40'}">${msg.timestamp}</div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message || !currentRoomId) return;
+            
+            socket.emit('chat-message', {
+                roomId: currentRoomId,
+                message
+            });
+            
+            input.value = '';
+        }
+
+        // ==================== INITIALISATION ====================
+        function initializeRoom() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('roomId');
+            const hostToken = urlParams.get('hostToken');
+            const usernameParam = urlParams.get('username');
+            const titleParam = urlParams.get('title');
+
+            if (!roomId) {
+                alert('Aucun identifiant de salle fourni. Retour à l\'accueil.');
+                window.location.href = '/';
+                return;
+            }
+
+            currentRoomId = roomId;
+            myName = usernameParam || 'Invité';
+            document.getElementById('myUsername').textContent = myName;
+
+            // Setup listeners
+            setupSocketListeners();
+
+            // Rejoindre ou créer
+            if (hostToken) {
+                // Création en tant qu'hôte
+                socket.emit('create-room', {
+                    username: myName,
+                    contentTitle: titleParam || ''
+                });
+            } else {
+                // Rejoindre en tant que viewer
+                socket.emit('join-room', {
+                    roomId: roomId,
+                    username: myName,
+                    hostToken: null
+                });
+            }
+
+            // Raccourci clavier pour chat
+            document.getElementById('chatInput').addEventListener('focus', () => {
+                // Optionnel
+            });
+
+            // Avertissement si pas HTTPS (certains navigateurs bloquent les flux)
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                setTimeout(() => {
+                    showToast('Conseil : Utilisez HTTPS pour une meilleure compatibilité avec les flux IPTV', 'warning');
+                }, 4500);
+            }
+        }
+
+        // Lancement
+        window.onload = function() {
+            initializeRoom();
+            
+            // Petit conseil pour l'hôte
+            setTimeout(() => {
+                const hostPanel = document.getElementById('hostStreamPanel');
+                if (hostPanel && !hostPanel.classList.contains('hidden')) {
+                    // déjà visible
+                }
+            }, 2000);
+        };
+
+        // Exposer quelques fonctions pour debug (console)
+        window.debugIPTV = {
+            forceSync: () => socket.emit('request-sync', { roomId: currentRoomId }),
+            getState: () => ({ roomId: currentRoomId, isHost, streamUrl: currentStreamUrl })
+        };
+    </script>
+</body>
+</html>

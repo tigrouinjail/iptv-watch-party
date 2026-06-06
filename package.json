@@ -1,0 +1,17 @@
+{
+  "name": "iptv-watch-party",
+  "version": "1.0.0",
+  "description": "Application web pour regarder des flux IPTV (matchs, films) ensemble en temps réel. Seul l'hôte choisit et contrôle le contenu qui est diffusé à tous.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["iptv", "watch-party", "stream", "synchronized", "hls"],
+  "author": "Grok xAI",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.5"
+  }
+}
