@@ -8,34 +8,45 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style> body { background: #0f172a; color: white; } .glass { background: rgba(255,255,255,0.08); } </style>
+    <style>
+        body { background: #0f172a; color: white; }
+        .channel-item { transition: all 0.2s; }
+        .channel-item:hover { background: rgba(255,255,255,0.1); }
+        .channel-item.active { background: #e11d48; }
+    </style>
 </head>
 <body>
-    <div class="max-w-6xl mx-auto p-6">
-        <div class="flex justify-between items-center mb-6">
+    <div class="max-w-7xl mx-auto p-6">
+        <div class="flex justify-between mb-6">
             <h1 class="text-3xl font-bold">Regardons Ensemble</h1>
-            <div id="roomInfo" class="text-sm"></div>
+            <div id="status" class="text-sm px-4 py-1 bg-white/10 rounded-2xl"></div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- VIDEO -->
             <div class="lg:col-span-8">
                 <div class="bg-black rounded-3xl overflow-hidden aspect-video">
                     <video id="video" class="w-full h-full" controls></video>
                 </div>
-                <div id="contentTitle" class="text-center mt-4 text-2xl font-semibold"></div>
+                <div id="title" class="text-center mt-4 text-2xl font-semibold"></div>
             </div>
 
+            <!-- ADMIN / CHANNELS -->
             <div class="lg:col-span-4">
-                <div id="adminPanel" class="hidden glass p-5 rounded-3xl">
-                    <h3 class="font-bold mb-3">Panel Admin</h3>
-                    <input id="streamUrl" placeholder="URL m3u8 ou stream" class="w-full p-3 rounded bg-black/40 mb-2">
-                    <input id="contentTitleInput" placeholder="Titre du programme" class="w-full p-3 rounded bg-black/40 mb-3">
-                    <button onclick="changeStream()" class="w-full bg-rose-600 py-3 rounded font-semibold">Diffuser</button>
-                </div>
+                <div id="adminPanel" class="glass p-5 rounded-3xl mb-4">
+                    <h3 class="font-bold mb-3 flex items-center gap-x-2">
+                        <i class="fa-solid fa-crown text-rose-400"></i> Panel Admin
+                    </h3>
+                    
+                    <div class="mb-3">
+                        <input id="m3uUrl" value="http://2970702.fluxitv.top/get.php?username=K97Z86M9&password=URGNZY&type=m3u&output=mpegts" class="w-full p-2 rounded bg-black/40 text-sm mb-2">
+                        <div class="flex gap-2">
+                            <button onclick="loadPlaylist()" class="flex-1 bg-white/10 py-2 rounded text-sm">Charger Playlist</button>
+                            <button onclick="pasteM3U()" class="flex-1 bg-white/10 py-2 rounded text-sm">Coller .m3u</button>
+                        </div>
+                    </div>
 
-                <div class="glass p-5 rounded-3xl mt-4">
-                    <h3 class="font-bold mb-3">Participants</h3>
-                    <div id="participantsList"></div>
+                    <div id="channelList" class="max-h-[400px] overflow-y-auto space-y-1 text-sm"></div>
                 </div>
             </div>
         </div>
@@ -45,40 +56,76 @@
         const socket = io();
         let currentRoomId = null;
         let isHost = false;
+        let channels = [];
         let video = document.getElementById('video');
 
         function createRoom() {
-            const username = prompt("Ton pseudo (Admin)");
-            socket.emit('create-room', { username });
-        }
-
-        function joinRoom(roomId) {
-            const username = prompt("Ton pseudo");
-            socket.emit('join-room', { roomId, username });
+            socket.emit('create-room', { username: 'Admin' });
         }
 
         socket.on('room-created', (data) => {
             currentRoomId = data.roomId;
             isHost = true;
-            document.getElementById('roomInfo').innerHTML = `Salle : <b>${data.roomId}</b> (Admin)`;
-            document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('status').innerHTML = `Salle: <b>${data.roomId}</b> (Admin)`;
         });
 
-        socket.on('room-joined', (data) => {
-            currentRoomId = data.roomId;
-            isHost = data.isHost;
-            if (data.streamUrl) loadStream(data.streamUrl, data.contentTitle);
-        });
+        function loadPlaylist() {
+            const url = document.getElementById('m3uUrl').value;
+            if (!url) return alert('Lien M3U manquant');
 
-        socket.on('stream-changed', (data) => {
-            loadStream(data.streamUrl, data.contentTitle);
-        });
+            fetch(url)
+                .then(r => r.text())
+                .then(text => {
+                    channels = parseM3U(text);
+                    renderChannelList();
+                })
+                .catch(() => alert('Impossible de charger la playlist. Colle le contenu .m3u manuellement.'));
+        }
 
-        function changeStream() {
+        function pasteM3U() {
+            const content = prompt('Colle le contenu de ton fichier .m3u ici:');
+            if (content) {
+                channels = parseM3U(content);
+                renderChannelList();
+            }
+        }
+
+        function parseM3U(content) {
+            const lines = content.split('\n');
+            const result = [];
+            let name = '';
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const match = line.match(/,(.+)$/);
+                    name = match ? match[1] : 'Chaîne';
+                } else if (line && !line.startsWith('#')) {
+                    result.push({ name, url: line });
+                }
+            }
+            return result;
+        }
+
+        function renderChannelList() {
+            const container = document.getElementById('channelList');
+            container.innerHTML = '';
+            channels.forEach((ch, i) => {
+                const div = document.createElement('div');
+                div.className = 'channel-item p-2 rounded cursor-pointer flex justify-between';
+                div.innerHTML = `<span>${ch.name}</span>`;
+                div.onclick = () => selectChannel(ch);
+                container.appendChild(div);
+            });
+        }
+
+        function selectChannel(channel) {
             if (!isHost || !currentRoomId) return;
-            const url = document.getElementById('streamUrl').value;
-            const title = document.getElementById('contentTitleInput').value;
-            socket.emit('change-stream', { roomId: currentRoomId, streamUrl: url, contentTitle: title });
+            socket.emit('change-stream', {
+                roomId: currentRoomId,
+                streamUrl: channel.url,
+                contentTitle: channel.name
+            });
+            loadStream(channel.url, channel.name);
         }
 
         function loadStream(url, title) {
@@ -91,15 +138,11 @@
             } else {
                 video.src = url;
             }
-            document.getElementById('contentTitle').innerText = title || '';
+            document.getElementById('title').innerText = title || '';
         }
 
-        // Auto create room for demo
         window.onload = () => {
-            // For demo, auto create room
-            setTimeout(() => {
-                if (!currentRoomId) createRoom();
-            }, 500);
+            createRoom();
         };
     </script>
 </body>
