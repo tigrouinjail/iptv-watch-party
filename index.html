@@ -11,10 +11,13 @@
         body { font-family: system-ui, sans-serif; background: #0f172a; color: white; }
         .cinema { background: linear-gradient(135deg, #0f172a, #1e1135); }
         video { background: black; }
+        .channel-item { transition: all 0.2s; }
+        .channel-item:hover { background-color: rgba(255,255,255,0.1); }
+        .channel-item.active { background-color: #e11d48; color: white; }
     </style>
 </head>
 <body class="cinema min-h-screen">
-    <div class="max-w-5xl mx-auto p-6">
+    <div class="max-w-6xl mx-auto p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center gap-x-3">
@@ -30,47 +33,76 @@
             </button>
         </div>
 
-        <!-- Video Player -->
-        <div class="bg-black rounded-3xl overflow-hidden shadow-2xl mb-6 aspect-video">
-            <video id="video" class="w-full h-full" controls playsinline></video>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- VIDEO -->
+            <div class="lg:col-span-8">
+                <div class="bg-black rounded-3xl overflow-hidden shadow-2xl aspect-video mb-4">
+                    <video id="video" class="w-full h-full" controls playsinline></video>
+                </div>
+                
+                <div class="text-center">
+                    <div id="currentTitle" class="text-2xl font-semibold mb-1">Aucun contenu diffusé</div>
+                    <div id="currentChannel" class="text-sm text-white/50"></div>
+                </div>
+            </div>
+
+            <!-- CHANNEL LIST (Admin only) -->
+            <div class="lg:col-span-4">
+                <div id="channelPanel" class="hidden bg-white/5 border border-white/10 rounded-3xl p-4 h-[500px] flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="font-semibold">Mes Chaînes</div>
+                        <div id="channelCount" class="text-xs bg-white/10 px-2 py-0.5 rounded">0</div>
+                    </div>
+                    
+                    <input type="text" id="searchInput" placeholder="Rechercher une chaîne..." 
+                           class="w-full bg-black/40 border border-white/20 px-3 py-2 rounded-2xl text-sm mb-3"
+                           oninput="filterChannels()">
+                    
+                    <div id="channelList" class="flex-1 overflow-y-auto space-y-1 pr-1 text-sm">
+                        <!-- Channels loaded dynamically -->
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Current Info -->
-        <div id="info" class="mb-6 text-center">
-            <div id="currentTitle" class="text-2xl font-semibold mb-1">Aucun contenu diffusé</div>
-            <div id="currentUrl" class="text-xs text-white/40 font-mono break-all"></div>
-        </div>
-
-        <!-- ADMIN PANEL -->
-        <div id="adminPanel" class="hidden max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-3xl p-6">
+        <!-- ADMIN CONTROLS -->
+        <div id="adminPanel" class="hidden max-w-4xl mx-auto mt-8 bg-white/5 border border-white/10 rounded-3xl p-6">
             <h2 class="text-xl font-bold mb-4 flex items-center gap-x-2">
                 <i class="fa-solid fa-crown text-rose-400"></i> 
-                Panel Admin
+                Panel Admin - Charger ta playlist
             </h2>
             
-            <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Option 1: M3U URL -->
                 <div>
-                    <label class="block text-sm mb-1 text-white/70">URL du flux (.m3u8)</label>
-                    <input id="streamUrl" type="text" placeholder="https://exemple.com/stream.m3u8"
+                    <label class="block text-sm mb-1 text-white/70">Lien M3U de ton provider</label>
+                    <input id="m3uUrl" type="text" 
+                           value="http://2970702.fluxitv.top/get.php?username=K97Z86M9&password=URGNZY&type=m3u&output=mpegts"
                            class="w-full bg-black/40 border border-white/20 px-4 py-3 rounded-2xl text-sm">
+                    <button onclick="loadM3UFromURL()" 
+                            class="mt-2 w-full bg-white/10 hover:bg-white/20 py-2 rounded-2xl text-sm">
+                        Charger depuis l'URL
+                    </button>
                 </div>
                 
+                <!-- Option 2: Paste M3U content -->
                 <div>
-                    <label class="block text-sm mb-1 text-white/70">Titre du programme</label>
-                    <input id="streamTitle" type="text" placeholder="Match du soir"
-                           class="w-full bg-black/40 border border-white/20 px-4 py-3 rounded-2xl text-sm">
+                    <label class="block text-sm mb-1 text-white/70">Ou colle le contenu de ton fichier .m3u</label>
+                    <textarea id="m3uContent" rows="4" placeholder="#EXTM3U
+#EXTINF:-1,Chaîne 1
+http://..." 
+                              class="w-full bg-black/40 border border-white/20 px-4 py-3 rounded-2xl text-sm font-mono"></textarea>
+                    <button onclick="loadM3UFromText()" 
+                            class="mt-2 w-full bg-white/10 hover:bg-white/20 py-2 rounded-2xl text-sm">
+                        Charger le contenu collé
+                    </button>
                 </div>
-                
-                <button onclick="setStream()" 
-                        class="w-full bg-rose-600 hover:bg-rose-500 py-3 rounded-2xl font-semibold flex items-center justify-center gap-x-2">
-                    <i class="fa-solid fa-play"></i>
-                    <span>DIFFUSER CE PROGRAMME</span>
-                </button>
             </div>
             
-            <div class="mt-4 pt-4 border-t border-white/10">
+            <div class="mt-6 pt-4 border-t border-white/10 flex gap-3">
                 <button onclick="copyViewerLink()" 
-                        class="w-full bg-white/10 hover:bg-white/20 py-3 rounded-2xl text-sm flex items-center justify-center gap-x-2">
+                        class="flex-1 bg-rose-600 hover:bg-rose-500 py-3 rounded-2xl font-semibold flex items-center justify-center gap-x-2">
                     <i class="fa-solid fa-link"></i>
                     <span>Copier le lien spectateurs</span>
                 </button>
@@ -81,16 +113,20 @@
     <script>
         const video = document.getElementById('video');
         let hls = null;
+        let channels = [];
+        let currentChannel = null;
 
-        // Simple admin password (change it if you want)
         const ADMIN_PASSWORD = "admin123";
 
         function toggleAdmin() {
             const panel = document.getElementById('adminPanel');
+            const channelPanel = document.getElementById('channelPanel');
+            
             if (panel.classList.contains('hidden')) {
                 const pass = prompt("Mot de passe Admin :");
                 if (pass === ADMIN_PASSWORD) {
                     panel.classList.remove('hidden');
+                    channelPanel.classList.remove('hidden');
                 } else {
                     alert("Mot de passe incorrect");
                 }
@@ -99,7 +135,7 @@
             }
         }
 
-        function loadStream(url, title = "") {
+        function loadStream(url, title = "", channelName = "") {
             if (hls) {
                 hls.destroy();
                 hls = null;
@@ -116,43 +152,130 @@
                 video.src = url;
             }
 
-            // Update UI
-            document.getElementById('currentTitle').textContent = title || "Contenu diffusé";
-            document.getElementById('currentUrl').textContent = url.length > 80 ? url.substring(0, 77) + "..." : url;
+            document.getElementById('currentTitle').textContent = title || channelName || "Contenu diffusé";
+            document.getElementById('currentChannel').textContent = channelName ? `Chaîne : ${channelName}` : '';
 
+            currentChannel = { url, title, channelName };
+            
             video.play().catch(() => {});
         }
 
-        function setStream() {
-            const url = document.getElementById('streamUrl').value.trim();
-            const title = document.getElementById('streamTitle').value.trim();
+        // Parse M3U content
+        function parseM3U(content) {
+            const lines = content.split('\n');
+            const result = [];
+            let currentName = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                if (line.startsWith('#EXTINF:')) {
+                    // Extract channel name
+                    const match = line.match(/,(.+)$/);
+                    currentName = match ? match[1].trim() : 'Chaîne sans nom';
+                } 
+                else if (line && !line.startsWith('#') && currentName) {
+                    result.push({
+                        name: currentName,
+                        url: line
+                    });
+                    currentName = '';
+                }
+            }
+            return result;
+        }
 
+        function displayChannels(filteredChannels) {
+            const container = document.getElementById('channelList');
+            container.innerHTML = '';
+            
+            document.getElementById('channelCount').textContent = filteredChannels.length;
+            
+            filteredChannels.forEach((channel, index) => {
+                const div = document.createElement('div');
+                div.className = `channel-item px-3 py-2.5 rounded-2xl cursor-pointer flex items-center justify-between ${currentChannel && currentChannel.url === channel.url ? 'active' : ''}`;
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-x-3">
+                        <i class="fa-solid fa-play text-xs opacity-60"></i>
+                        <span>${channel.name}</span>
+                    </div>
+                `;
+                
+                div.onclick = () => {
+                    loadStream(channel.url, '', channel.name);
+                    // Update active state
+                    document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
+                };
+                
+                container.appendChild(div);
+            });
+        }
+
+        function filterChannels() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = channels.filter(ch => 
+                ch.name.toLowerCase().includes(search)
+            );
+            displayChannels(filtered);
+        }
+
+        async function loadM3UFromURL() {
+            const url = document.getElementById('m3uUrl').value.trim();
             if (!url) {
-                alert("Veuillez entrer une URL de flux");
+                alert("Veuillez entrer un lien M3U");
                 return;
             }
 
-            loadStream(url, title);
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Impossible de charger la playlist');
+                
+                const text = await response.text();
+                channels = parseM3U(text);
+                
+                if (channels.length === 0) {
+                    alert("Aucune chaîne trouvée dans cette playlist");
+                    return;
+                }
+                
+                displayChannels(channels);
+                document.getElementById('searchInput').value = '';
+                
+            } catch (error) {
+                alert("Erreur lors du chargement de la playlist.\nEssaie de coller directement le contenu du fichier .m3u à la place.");
+                console.error(error);
+            }
+        }
+
+        function loadM3UFromText() {
+            const content = document.getElementById('m3uContent').value.trim();
+            if (!content) {
+                alert("Veuillez coller le contenu de votre fichier .m3u");
+                return;
+            }
+
+            channels = parseM3U(content);
             
-            // Save in URL so it persists when sharing
-            const params = new URLSearchParams();
-            params.set('stream', url);
-            if (title) params.set('title', title);
-            window.history.replaceState({}, '', '?' + params.toString());
+            if (channels.length === 0) {
+                alert("Aucune chaîne trouvée");
+                return;
+            }
+            
+            displayChannels(channels);
+            document.getElementById('searchInput').value = '';
         }
 
         function copyViewerLink() {
-            const url = document.getElementById('streamUrl').value.trim();
-            const title = document.getElementById('streamTitle').value.trim();
-            
-            if (!url) {
-                alert("Aucun flux à partager");
+            if (!currentChannel) {
+                alert("Aucun contenu sélectionné");
                 return;
             }
 
             const params = new URLSearchParams();
-            params.set('stream', url);
-            if (title) params.set('title', title);
+            params.set('stream', currentChannel.url);
+            if (currentChannel.channelName) params.set('title', currentChannel.channelName);
             
             const link = window.location.origin + window.location.pathname + '?' + params.toString();
             navigator.clipboard.writeText(link).then(() => {
@@ -160,28 +283,26 @@
             });
         }
 
-        // Auto-load stream from URL parameters (for viewers)
         function initFromURL() {
             const params = new URLSearchParams(window.location.search);
             const stream = params.get('stream');
             const title = params.get('title');
 
             if (stream) {
-                loadStream(stream, title || "");
+                loadStream(stream, '', title || '');
             }
         }
 
-        // Initialize
         window.onload = function() {
             initFromURL();
             
-            // Easter egg: press "a" to quickly open admin
+            // Keyboard shortcut for admin
             document.addEventListener('keydown', function(e) {
-                if (e.key.toLowerCase() === 'a') {
-                    const panel = document.getElementById('adminPanel');
-                    if (panel.classList.contains('hidden')) {
-                        const pass = prompt("Mot de passe Admin :");
-                        if (pass === ADMIN_PASSWORD) panel.classList.remove('hidden');
+                if (e.key.toLowerCase() === 'a' && document.getElementById('adminPanel').classList.contains('hidden')) {
+                    const pass = prompt("Mot de passe Admin :");
+                    if (pass === ADMIN_PASSWORD) {
+                        document.getElementById('adminPanel').classList.remove('hidden');
+                        document.getElementById('channelPanel').classList.remove('hidden');
                     }
                 }
             });
