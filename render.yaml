@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: iptv-watch-party
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true

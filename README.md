@@ -2,126 +2,84 @@
 
 Application web **open source** permettant de regarder un flux IPTV (match, film, série) **ensemble en temps réel**, avec **synchronisation parfaite**.
 
-> **Seul l’hôte** choisit le contenu et contrôle la lecture (play/pause/seek). Les invités regardent en parfaite synchronisation.
+> **Seul l’Admin** choisit le contenu et contrôle la lecture. Les spectateurs regardent en mode passif.
 
 ---
 
 ## ✨ Fonctionnalités
 
-- ✅ **Création de salle privée** en un clic
-- ✅ **Contrôle total par l’hôte** : changement de flux + play/pause/seek
-- ✅ **Synchronisation temps réel** via WebSocket (Socket.io)
-- ✅ **Support HLS** (.m3u8) via hls.js + fallback natif
+- ✅ **Accès Admin réservé** : Seul l’Admin peut coller l’URL IPTV et contrôler la lecture
+- ✅ **Synchronisation parfaite** via WebSocket
+- ✅ **Support HLS** (.m3u8) via hls.js
 - ✅ **Chat en direct** intégré
-- ✅ **Liste des participants** en temps réel
-- ✅ **Lien partageable** pour les invités (aucun compte requis)
-- ✅ **Lien hôte secret** pour retrouver les droits de contrôle
-- ✅ **Design cinéma moderne** (dark mode)
-- ✅ **Responsive** (desktop + mobile)
-- ✅ **100% gratuit & auto-hébergeable**
+- ✅ **Lien spectateurs** simple à partager
+- ✅ **Design cinéma moderne**
+- ✅ **100% gratuit & facile à déployer**
 
 ---
 
-## 🚀 Installation & Lancement (en local)
+## 🚀 Déploiement en 1 clic (Recommandé)
 
-### 1. Prérequis
-- Node.js 18+ (https://nodejs.org)
-- npm (inclus avec Node)
+### Option 1 : Render.com (le plus simple - gratuit)
 
-### 2. Installation
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/tigrouinjail/iptv-watch-party)
 
-```bash
-cd iptv-watch-party
-npm install
-```
+Ou manuellement :
+1. Va sur [render.com](https://render.com) et connecte ton GitHub
+2. New Web Service → Connect `iptv-watch-party`
+3. Tout est déjà configuré automatiquement grâce au fichier `render.yaml`
+4. Clique sur Deploy
 
-### 3. Lancer le serveur
-
-```bash
-npm start
-```
-
-Ouvrez ensuite **http://localhost:3000** dans votre navigateur.
-
----
-
-## 📦 Déploiement gratuit (recommandé)
-
-### Option 1 : Render.com (le plus simple)
-
-1. Créez un compte sur [render.com](https://render.com)
-2. New Web Service → Connectez votre repo GitHub
-3. Build Command: `npm install`
-4. Start Command: `npm start`
-5. Deploy !
+Ton app sera en ligne en 2-3 minutes à l’adresse fournie par Render.
 
 ### Option 2 : Railway.app
 
-Même principe, très rapide.
+1. Va sur [railway.app](https://railway.app)
+2. New Project → Deploy from GitHub
+3. Choisis le repo `iptv-watch-party`
+4. Railway détecte automatiquement Node.js
+5. Deploy
 
-### Option 3 : VPS / Serveur personnel
+---
+
+## 📁 Installation locale (pour tester)
 
 ```bash
-npm install -g pm2
-pm2 start server.js --name "iptv-party"
-pm2 save
-pm2 startup
+git clone https://github.com/tigrouinjail/iptv-watch-party.git
+cd iptv-watch-party
+npm install
+npm start
 ```
 
-N’oubliez pas d’ouvrir le port 3000 (ou utilisez Nginx + reverse proxy + HTTPS).
+Ouvre ensuite **http://localhost:3000**
 
 ---
 
-## 📖 Comment utiliser (pour vous et vos amis)
+## 📖 Comment utiliser
 
-### En tant qu’Hôte (vous)
+### En tant qu’Admin (toi)
 
-1. Allez sur la page d’accueil
-2. Cliquez sur **« Créer une salle maintenant »**
-3. Entrez votre pseudo + titre du match/film (ex: "PSG vs OM - 1/2 finale")
-4. Vous arrivez dans la salle avec les droits d’hôte
-5. **Collez votre URL de flux IPTV** (idéalement `.m3u8`) dans le champ prévu
-6. Cliquez sur **DIFFUSER**
-7. Copiez le **lien invités** et envoyez-le à vos amis
+1. Ouvre l’URL de ton app déployée
+2. Clique sur **« Créer une salle (Admin) »**
+3. Tu arrives avec tous les droits de contrôle
+4. Colle ton **URL de flux IPTV** (.m3u8) + le titre
+5. Clique sur **« DIFFUSER CE PROGRAMME »**
+6. Copie le **lien spectateurs** et envoie-le à tes amis
 
-> **Important** : Gardez précieusement le lien complet de la page (avec le `hostToken` dans l’URL). C’est ce qui vous permet de garder les droits d’hôte même si vous rafraîchissez ou revenez plus tard.
+### En tant que spectateur
 
-### En tant qu’Invité
-
-1. Cliquez sur le lien que l’hôte vous a envoyé
-2. Entrez votre pseudo
-3. Rejoignez → vous voyez directement le flux en cours (synchronisé)
+Tes amis cliquent simplement sur le lien que tu leur as envoyé. Ils regardent sans rien pouvoir modifier.
 
 ---
 
-## ⚠️ Notes importantes sur les flux IPTV
+## ⚠️ Important
 
-- L’application supporte le mieux les flux **HLS (.m3u8)**
-- Le flux doit être **accessible publiquement depuis un navigateur** (pas de protection anti-hotlink forte, pas de token éphémère, pas de geo-blocage strict)
-- Testez toujours votre lien d’abord dans **VLC** ou directement dans un onglet Chrome
-- Certains providers IPTV ne permettent pas la lecture navigateur → dans ce cas, utilisez un flux alternatif ou un proxy
-
----
-
-## 🛠️ Personnalisation
-
-Vous pouvez facilement :
-- Changer les couleurs (rose par défaut)
-- Ajouter un logo
-- Modifier les messages
-- Ajouter une authentification simple
-- Stocker les rooms en base de données (MongoDB / PostgreSQL)
-
-Le code est volontairement simple et bien commenté.
+- Le flux doit être un lien **.m3u8** lisible dans un navigateur
+- Teste toujours ton lien d’abord dans **VLC**
+- L’Admin seul voit et contrôle l’URL du flux
 
 ---
 
-## 📄 Licence
-
-MIT — libre d’utilisation, modification et déploiement.
-
----
-
-**Créé avec ❤️ par Grok (xAI) pour votre plaisir de regarder ensemble.**
+**Créé avec ❤️ par Grok (xAI)**
 
 Amusez-vous bien et bon match / bon film ! 🍿⚽
