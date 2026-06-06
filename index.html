@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Regardons Ensemble • IPTV</title>
+    <title>Regardons Ensemble • V12 OTT</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -11,42 +11,65 @@
         .cinema { background: linear-gradient(135deg, #0f172a, #1e1135); }
     </style>
 </head>
-<body class="cinema min-h-screen flex items-center justify-center">
-    <div class="max-w-md w-full mx-auto p-8 text-center">
-        <div class="mb-8">
-            <div class="w-20 h-20 bg-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <i class="fa-solid fa-tv text-white text-5xl"></i>
+<body class="cinema min-h-screen">
+    <div class="max-w-2xl mx-auto p-8">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <div class="w-16 h-16 bg-rose-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-tv text-white text-4xl"></i>
             </div>
-            <h1 class="text-4xl font-bold mb-2">Regardons Ensemble</h1>
-            <p class="text-white/60">Ta solution IPTV simple</p>
+            <h1 class="text-4xl font-bold">Regardons Ensemble</h1>
+            <p class="text-white/60 mt-2">V12 OTT - Configuration rapide</p>
         </div>
 
-        <div class="bg-white/5 border border-white/10 rounded-3xl p-8 mb-6">
-            <h2 class="text-xl font-semibold mb-4">Meilleure solution recommandée</h2>
-            
-            <div class="mb-6">
-                <p class="text-white/70 mb-4">Pour ton compte Xtream Codes, utilise <strong>IPTVnator</strong> (le plus complet et stable) :</p>
+        <!-- Main Card -->
+        <div class="bg-white/5 border border-white/10 rounded-3xl p-8">
+            <h2 class="text-2xl font-semibold mb-6 flex items-center gap-x-3">
+                <i class="fa-solid fa-play-circle text-rose-400"></i>
+                <span>IPTVnator (Recommandé)</span>
+            </h2>
+
+            <div class="mb-8">
+                <p class="text-white/70 mb-4">IPTVnator est actuellement la meilleure solution web pour ton compte Xtream. Elle supporte parfaitement les identifiants et l’EPG.</p>
                 
                 <a href="https://iptvnator.vercel.app/" target="_blank"
-                   class="inline-flex items-center justify-center w-full bg-rose-600 hover:bg-rose-500 transition-colors px-6 py-4 rounded-2xl font-semibold text-lg gap-x-3">
-                    <i class="fa-solid fa-play"></i>
-                    <span>Ouvrir IPTVnator (Web)</span>
+                   class="flex items-center justify-center w-full bg-rose-600 hover:bg-rose-500 py-4 rounded-2xl font-semibold text-lg gap-x-3 transition-colors">
+                    <i class="fa-solid fa-external-link-alt"></i>
+                    <span>Ouvrir IPTVnator Web</span>
                 </a>
             </div>
 
-            <div class="text-left text-sm bg-black/30 p-4 rounded-2xl">
-                <p class="font-semibold mb-2">Identifiants à entrer :</p>
-                <div class="space-y-1 font-mono text-xs">
-                    <div><span class="text-white/50">Host :</span> http://2970702.fluxitv.top</div>
-                    <div><span class="text-white/50">Username :</span> K97Z86M9</div>
-                    <div><span class="text-white/50">Password :</span> URGNZY</div>
+            <!-- Configuration -->
+            <div>
+                <h3 class="font-semibold mb-4 text-lg">Configuration à entrer dans IPTVnator :</h3>
+                
+                <div class="bg-black/40 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/60">Type de connexion</span>
+                        <span class="font-mono bg-white/10 px-3 py-1 rounded-xl text-sm">Xtream Codes</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/60">Name</span>
+                        <span class="font-mono">V12 OTT</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/60">Host / URL</span>
+                        <span class="font-mono text-rose-400">http://2970702.fluxitv.top</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/60">Username</span>
+                        <span class="font-mono">K97Z86M9</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-white/60">Password</span>
+                        <span class="font-mono">URGNZY</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="text-xs text-white/40">
-            IPTVnator supporte parfaitement les comptes Xtream.<br>
-            Liste de chaînes + EPG inclus.
+        <div class="mt-8 text-center text-xs text-white/40">
+            Une fois connecté, tu auras accès à toutes tes chaînes + le guide TV.
         </div>
     </div>
 </body>
