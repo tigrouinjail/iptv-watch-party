@@ -33,17 +33,22 @@
                 <div id="title" class="text-center mt-4 text-2xl font-semibold"></div>
             </div>
 
-            <!-- CHANNEL LIST -->
+            <!-- ADMIN PANEL -->
             <div class="lg:col-span-4">
                 <div id="adminPanel" class="hidden glass p-5 rounded-3xl">
-                    <h3 class="font-bold mb-3">Panel Admin</h3>
-                    
-                    <div class="mb-3">
-                        <input id="m3uUrl" value="http://2970702.fluxitv.top/get.php?username=K97Z86M9&password=URGNZY&type=m3u&output=mpegts" class="w-full p-2 rounded bg-black/40 text-sm mb-2">
-                        <button onclick="loadPlaylist()" class="w-full bg-rose-600 py-2 rounded text-sm font-semibold">Charger ma playlist</button>
+                    <h3 class="font-bold mb-4">Panel Admin - Xtream</h3>
+
+                    <div class="space-y-3 mb-4">
+                        <input id="host" value="http://2970702.fluxitv.top" class="w-full p-2 rounded bg-black/40 text-sm" placeholder="Host">
+                        <input id="username" value="K97Z86M9" class="w-full p-2 rounded bg-black/40 text-sm" placeholder="Username">
+                        <input id="password" value="URGNZY" class="w-full p-2 rounded bg-black/40 text-sm" placeholder="Password" type="password">
+                        
+                        <button onclick="loginXtream()" class="w-full bg-rose-600 py-2.5 rounded font-semibold">
+                            Se connecter &amp; Charger mes chaînes
+                        </button>
                     </div>
 
-                    <div id="channelList" class="max-h-[450px] overflow-y-auto space-y-1 text-sm"></div>
+                    <div id="channelList" class="max-h-[400px] overflow-y-auto space-y-1 text-sm"></div>
                 </div>
             </div>
         </div>
@@ -55,19 +60,29 @@
         let video = document.getElementById('video');
 
         function toggleAdmin() {
-            const panel = document.getElementById('adminPanel');
-            panel.classList.toggle('hidden');
+            document.getElementById('adminPanel').classList.toggle('hidden');
         }
 
-        async function loadPlaylist() {
-            const url = document.getElementById('m3uUrl').value;
+        async function loginXtream() {
+            const host = document.getElementById('host').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!host || !username || !password) {
+                alert('Veuillez remplir tous les champs');
+                return;
+            }
+
+            const m3uUrl = `${host}/get.php?username=${username}&password=${password}&type=m3u&output=mpegts`;
+
             try {
-                const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(m3uUrl);
+                const res = await fetch(proxyUrl);
                 const text = await res.text();
                 channels = parseM3U(text);
-                renderChannels();
+                renderChannelList();
             } catch (e) {
-                alert('Erreur de chargement. Colle le contenu du fichier .m3u directement.');
+                alert('Erreur de connexion. Vérifie tes identifiants ou colle le fichier .m3u manuellement.');
             }
         }
 
@@ -78,8 +93,8 @@
             for (let line of lines) {
                 line = line.trim();
                 if (line.startsWith('#EXTINF:')) {
-                    const m = line.match(/,(.+)$/);
-                    name = m ? m[1] : 'Chaîne';
+                    const match = line.match(/,(.+)$/);
+                    name = match ? match[1] : 'Chaîne';
                 } else if (line && !line.startsWith('#')) {
                     result.push({ name, url: line });
                 }
@@ -87,7 +102,7 @@
             return result;
         }
 
-        function renderChannels() {
+        function renderChannelList() {
             const container = document.getElementById('channelList');
             container.innerHTML = '';
             channels.forEach(ch => {
@@ -119,21 +134,20 @@
             document.getElementById('title').innerText = title;
         }
 
-        function copyLink() {
+        function copyViewerLink() {
             if (!currentChannel) return alert('Aucune chaîne sélectionnée');
             const link = location.origin + location.pathname + '?stream=' + encodeURIComponent(currentChannel.url) + '&title=' + encodeURIComponent(currentChannel.name);
             navigator.clipboard.writeText(link);
-            alert('Lien copié ! Envoie-le à tes spectateurs.');
+            alert('Lien spectateurs copié !');
         }
 
-        // Load from URL if shared
+        // Load shared link
         function initFromURL() {
             const params = new URLSearchParams(location.search);
             const stream = params.get('stream');
             const title = params.get('title');
             if (stream) {
-                loadVideo(stream, title);
-                document.getElementById('title').innerText = title || '';
+                loadVideo(stream, title || '');
             }
         }
 
